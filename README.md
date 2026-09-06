@@ -7,7 +7,7 @@ Architecture: private GitHub repository â†’ Harness Custom stage/Shell Script â†
 ## Current files
 
 - `infra/aws/launch-plan.json`: proposed console configuration, with unknowns explicitly unset; not an AWS CLI request.
-- `infra/aws/ec2-trust-policy.json`: reviewable EC2 trust policy; not submitted.
+- `infra/aws/ec2-trust-policy.json`: EC2 trust policy used for the approved, created role.
 - `scripts/runtime-check.sh`: version/presence check to run inside the real Harness delegate.
 - `changelog/db.changelog-master.yaml`: includes only the first collection changeset.
 - `changelog/changes/002-create-index.yaml`: inactive incremental exercise.
@@ -44,10 +44,12 @@ Applied changeset IDs, authors, contents, and paths are immutable. Existing 002/
 
 The detailed planning runbook is currently in the parent task's `outputs/mongodb-liquibase-harness-runbook.md`; an authored copy is also kept at `docs/runbook.md`. Actual versions, installation commands, and acceptance results will replace provisional sections during execution.
 
-## Current blockers
+## Current execution state
 
-- The browser tool could not verify an administrator-enforced policy for both AWS and Atlas. Access was denied before account inspection. Do not bypass this via another browser/control route or AWS CLI.
-- The Mac mini's GitHub CLI reported an authentication failure in the restricted command environment; this does not yet distinguish invalid credentials from network restrictions. The connected GitHub plugin identified `Korrojo`; terminal-based publication is unverified.
-- The released native executor passes a connection string in child-process arguments. Do not pass real credentials through `mongo`/`mongoFile` until an implementation that meets the lab's credential requirements is verified.
+- Browser access works again. The approved SSM role/profile is created and selected in the EC2 launch draft. Final network/configuration review is complete; the requested $20 monthly lab spending approval is pending. No EC2 instance has been launched.
+- GitHub CLI authentication was verified as Korrojo outside the restricted network environment. Private repository publication is still pending.
+- The actual saved Harness runtime pipeline is exported in `.harness/runtime-check.yaml`; it has not run.
+- Sixteen candidate runtime libraries resolved successfully. A password-redaction defect was reproduced with synthetic data and repaired in a pinned source patch. See [the offline runtime checkpoint](docs/runtime-offline-checkpoint.md).
+- Native-executor credential handling remains unfinished. Exercise 003 stays inactive.
 
-No deployment command is provided yet; the starter is deliberately not presented as a working migration pipeline.
+The full lab is not yet a tested installation recipe. Each unverified stage remains explicitly pending.

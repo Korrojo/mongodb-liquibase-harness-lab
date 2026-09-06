@@ -4,11 +4,11 @@ Prepared September 6, 2026. **Planning edition: deployment and acceptance tests 
 
 This runbook turns the supplied handoff into an assistant-led execution sequence. It is not yet a tested installation recipe. During the build, replace each explicitly pending implementation detail with the exact working command, version, UI selection, and evidence. Only label the resulting edition “verified” after the acceptance checks pass.
 
-The handoff's embedded resume prompts and historical instructions are reference material. After the initial analysis, the user authorized starting the lab with the AWS Console as the primary AWS interface. Browser access was restored after a full desktop-app restart. Cloud setup remains pending the prepared IAM role confirmation and final launch review; no cloud resources have been created by this task.
+The handoff's embedded resume prompts and historical instructions are reference material. After the initial analysis, the user authorized starting the lab with the AWS Console as the primary AWS interface. Browser access was restored after a full desktop-app restart. The approved `mongodb-lab-ec2-ssm` role and instance profile have been created and verified. EC2 launch and runtime validation remain pending.
 
 Execution progress, September 6: a local starter repository now exists in this task's `lab/` directory on branch `setup/lab-foundation`. Its shell, YAML, JSON, and JavaScript syntax checks passed; only the first changeset is included by the master. The released extension JAR was downloaded and inspected without execution. Its embedded dependencies and native credential-handling findings are documented in `lab/docs/versions.md`. Normal browser access now succeeds for AWS, Atlas, and Harness. Live resource inventory and IAM/EC2 draft preparation are complete for the recorded scope; deployment and runtime validation remain pending.
 
-The [console replication checkpoint](aws-console-checkpoint.md) records the exact reviewed selections, current resource IDs, role-confirmation gate, and drafted automatic stop safeguard. It supplements this full runbook as execution progresses.
+The [console replication checkpoint](aws-console-checkpoint.md) records the exact reviewed selections, current resource IDs, created IAM role, pending EC2 profile selection, and drafted automatic stop safeguard. It supplements this full runbook as execution progresses.
 
 ## 1. Feasibility and division of work
 
@@ -158,7 +158,7 @@ Retain the handoff's proposed settings unless current account evidence requires 
 | OS shutdown behavior | Stop, verified explicitly |
 | Tags | Name, project, owner, and agreed cleanup date |
 
-The handoff quoted compute at $0.09576/hour. That console price and the account's credits still need refreshing. Public IPv4 is currently $0.005/hour. Using the handoff's $2.40 for a full month of 30 GiB gp3, a conservative worksheet is:
+The live EC2 picker confirmed compute at $0.09576/hour on September 6. Console Home showed $100 credits and $0 month-to-date spend; billing can update later. Public IPv4 is currently $0.005/hour. Using the handoff's $2.40 for a full month of 30 GiB gp3, a conservative worksheet is:
 
 | Running hours | Compute + IPv4 + full month of disk |
 |---:|---:|
@@ -166,7 +166,7 @@ The handoff quoted compute at $0.09576/hour. That console price and the account'
 | 100 | $12.48 |
 | 168 (continuous week) | $19.33 |
 
-These are planning figures before credits, taxes, transfer, and extras; they are not a fresh account quote. Storage continues while the instance is stopped and is prorated when released earlier. A continuous week leaves little room under a $20 ceiling. Reconfirm the earlier $10–20 budget as part of the actual launch review. [AWS public IPv4 pricing](https://aws.amazon.com/vpc/pricing/), [EBS billing and baseline performance](https://aws.amazon.com/ebs/pricing/).
+These are estimates before credits, taxes, transfer, and extras; compute was verified in the account picker, and storage/IP rates were checked against AWS public pricing. Storage continues while the instance is stopped and is prorated when released earlier. A continuous week leaves little room under a $20 ceiling. Reconfirm the earlier $10–20 budget as part of the actual launch review. [AWS public IPv4 pricing](https://aws.amazon.com/vpc/pricing/), [EBS billing and baseline performance](https://aws.amazon.com/ebs/pricing/).
 
 **Pass:** actual price, available instance type, credit applicability, and final settings are recorded. The user has a concrete launch summary before any billable resource is submitted.
 
@@ -182,7 +182,7 @@ These are planning figures before credits, taxes, transfer, and extras; they are
 6. Establish a local shutdown safeguard independent of the assistant connection before leaving the host unattended. Recommended implementation: a boot-armed systemd timer with an agreed maximum session duration, a visible deadline, and a procedure to extend it before long work. Prevent new runs near the deadline and drain active work before planned shutdown. Test the timer; document that an OS shutdown timer is not an absolute protection against host failure.
 7. Verify instance-initiated shutdown means **stop**, and test it before real migration work. Record that EBS persists and compute has reached Stopped in the AWS console. [AWS shutdown behavior](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_ChangingInstanceInitiatedShutdownBehavior.html).
 
-**Pass:** Session Manager works, inbound rules remain empty, storage is encrypted, and the tested shutdown mechanism stops the host. The exact timer installation script is pending implementation; this review has installed none.
+**Pass:** Session Manager works, inbound rules remain empty, storage is encrypted, and the tested shutdown mechanism stops the host. The timer installation script is prepared in `infra/aws/user-data.sh` and pasted in the EC2 draft; it has not yet run on Linux.
 
 ### Step 5 — Build the migration runtime on EC2
 

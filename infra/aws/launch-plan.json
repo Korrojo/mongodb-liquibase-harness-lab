@@ -18,7 +18,7 @@
   "role_managed_policy_arns": [
     "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
   ],
-  "role_creation_and_attachment_confirmation": "pending_at_action_time",
+  "role_creation_and_attachment_confirmation": "approved by user on 2026-09-06; role created and profile selected in launch draft",
   "root_volume": {
     "type": "gp3",
     "size_gib": 30,
@@ -54,5 +54,8 @@
     "No duplicate EC2, IAM, security group, or EBS resources",
     "Role/profile reviewed and required confirmation completed",
     "Shutdown behavior and safeguard deployment plan"
-  ]
+  ],
+  "verified_instance_profile_arn": "arn:aws:iam::224772450208:instance-profile/mongodb-lab-ec2-ssm",
+  "verified_network_acl_id": "acl-076f802dc0142516a",
+  "launch_spending_confirmation": "pending: user asked to approve launch and a $20 monthly lab spending limit"
 }

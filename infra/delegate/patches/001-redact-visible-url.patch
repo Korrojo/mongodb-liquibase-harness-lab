@@ -1,0 +1,61 @@
+diff --git a/src/main/java/liquibase/ext/mongodb/database/MongoConnection.java b/src/main/java/liquibase/ext/mongodb/database/MongoConnection.java
+index d1b92a2..d0d319d 100644
+--- a/src/main/java/liquibase/ext/mongodb/database/MongoConnection.java
++++ b/src/main/java/liquibase/ext/mongodb/database/MongoConnection.java
+@@ -142,3 +142,8 @@ public class MongoConnection extends AbstractNoSqlConnection {
+     public String getVisibleUrl() {
+-        return ofNullable(connectionString).map(ConnectionString::getConnectionString)
++        // A displayed URL must never contain user info or connection options,
++        // which can themselves carry authentication material.
++        return ofNullable(connectionString)
++                .map(value -> (value.isSrvProtocol() ? MONGO_DNS_PREFIX : MONGO_PREFIX)
++                        + String.join(",", value.getHosts())
++                        + ofNullable(value.getDatabase()).map(name -> "/" + name).orElse(""))
+                 .orElseGet(super::getVisibleUrl);
+diff --git a/src/test/java/liquibase/ext/mongodb/database/MongoConnectionVisibleUrlTest.java b/src/test/java/liquibase/ext/mongodb/database/MongoConnectionVisibleUrlTest.java
+new file mode 100644
+--- /dev/null
++++ b/src/test/java/liquibase/ext/mongodb/database/MongoConnectionVisibleUrlTest.java
+@@ -0,0 +1,42 @@
++package liquibase.ext.mongodb.database;
++
++import com.mongodb.ConnectionString;
++import org.junit.jupiter.api.Test;
++import java.util.Collections;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++import static org.mockito.Mockito.mock;
++import static org.mockito.Mockito.when;
++
++class MongoConnectionVisibleUrlTest {
++    @Test
++    void stripsCredentialsAndOptionsForStandardUrl() {
++        MongoConnection connection = new MongoConnection();
++        connection.setConnectionString(new ConnectionString(
++                "mongodb://user:dummy%40password@host1:27017,host2:27018/lab?authSource=admin&appName=private_canary"));
++        assertEquals("mongodb://host1:27017,host2:27018/lab", connection.getVisibleUrl());
++    }
++
++    @Test
++    void preservesSrvSchemeWithoutCredentialsOrOptions() {
++        MongoConnection connection = new MongoConnection();
++        // The driver's SRV parser performs a TXT lookup. Mock its parsed value
++        // to exercise formatting without depending on DNS or a database.
++        ConnectionString parsed = mock(ConnectionString.class);
++        when(parsed.isSrvProtocol()).thenReturn(true);
++        when(parsed.getHosts()).thenReturn(Collections.singletonList("cluster.example.net"));
++        when(parsed.getDatabase()).thenReturn("lab");
++        when(parsed.getConnectionString()).thenReturn(
++                "mongodb+srv://user:dummy_password@cluster.example.net/lab?authSource=admin&appName=private_canary");
++        connection.setConnectionString(parsed);
++        assertEquals("mongodb+srv://cluster.example.net/lab", connection.getVisibleUrl());
++    }
++
++    @Test
++    void handlesAbsentDatabaseAndConnection() {
++        MongoConnection connection = new MongoConnection();
++        assertEquals("", connection.getVisibleUrl());
++        connection.setConnectionString(new ConnectionString("mongodb://localhost:27017"));
++        assertEquals("mongodb://localhost:27017", connection.getVisibleUrl());
++    }
++}

@@ -1,0 +1,42 @@
+pipeline:
+  name: mongodb-lab-runtime-check
+  identifier: mongodblabruntimecheck
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Runtime check
+        identifier: Runtime_check
+        description: ""
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: ShellScript
+                  name: Verify migration tools
+                  identifier: Verify_migration_tools
+                  spec:
+                    shell: Bash
+                    executionTarget: {}
+                    delegateSelectors:
+                      - mongodb-lab
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          set -euo pipefail
+                          printf "MongoDB lab runtime check\n"
+                          for tool in git java liquibase mongosh; do
+                            command -v "$tool" >/dev/null || { printf "Missing required tool: %s\n" "$tool"; exit 1; }
+                            done
+                            git --version
+                            java -version
+                            liquibase --version
+                            mongosh --version
+                            printf "Runtime tools available. Database connectivity has not been tested.\n"
+                    environmentVariables: []
+                    outputVariables: []
+                  timeout: 2m
+        tags: {}

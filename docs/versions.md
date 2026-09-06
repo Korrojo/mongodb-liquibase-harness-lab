@@ -41,3 +41,11 @@ Do not enable the native changeset until a version or reviewed implementation pa
 3. Select Linux mongosh and test both driver and native execution in the actual container.
 4. Verify custom-image upgrade control and reproducible rebuild.
 5. Run the acceptance checks in the runbook before freezing the tested version inventory.
+
+## Local dependency and redaction checks
+
+- Resolved the candidate runtime using `infra/delegate/dependencies.pom.xml`: Liquibase core 4.33.0, picocli 4.7.7, MongoDB driver 5.5.1, Jackson 2.18.2 and transitive libraries. Maven 3.9.16 was downloaded to task outputs and its published SHA-512 verified; no system-wide Maven installation was made.
+- `liquibase.integration.commandline.Main --version` passed with Java 17.0.20 on the mini. `scripts/RuntimeProbe.java` loaded exactly one MongoDB database implementation, registered createCollection/createIndex/mongoFile, and parsed all three exercises without opening a connection. These are local JVM checks, not EC2/container or Atlas validation.
+- The same probe FAILED its synthetic-password redaction assertion: the released extension returns the entire URI from `MongoConnection.getVisibleUrl()`. This establishes another credential issue independently of the native argv finding. No real database credentials were used. A source fix and offline unit tests are being prepared at pinned upstream commit `1d2e9bc199ec364fc4e1520fbde5cfaad7b3f021`.
+
+The first visible-URL source patch now passes the offline probe. The detailed reproduction and limits are recorded in [runtime-offline-checkpoint.md](runtime-offline-checkpoint.md). Native process-argument exposure remains a separate unresolved item.

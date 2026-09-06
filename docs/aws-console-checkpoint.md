@@ -1,6 +1,6 @@
 # AWS Console preparation and replication checkpoint
 
-September 6, 2026. **Forms prepared; nothing launched.** The SSM role is at its final review screen, awaiting the user's specific confirmation. The EC2 form still requires that role/profile, final launch review, and spending authorization. The user-data script has passed Bash syntax checking only.
+September 6, 2026. **SSM role/profile created and verified; EC2 not launched.** The user explicitly approved the role and its assignment. The EC2 form now has the verified profile selected. Final configuration/network review is complete; launch/spending confirmation is pending. The user-data script has passed Bash syntax checking only.
 
 ## Recovering the side browser
 
@@ -16,14 +16,14 @@ In this execution, selecting AWS and Atlas initially failed because a managed br
 
 ## 2. Prepare the management role
 
-These steps were performed through the final review screen:
+These steps were performed through creation and readback:
 
 1. IAM → **Roles → Create role**.
 2. Choose **AWS service**, service **EC2**, and the ordinary **EC2** use case.
 3. Choose **Next**. Keep **Use existing policy**. Search for the exact name `AmazonSSMManagedInstanceCore` and select only that policy.
 4. Choose **Next**. Set role name `mongodb-lab-ec2-ssm` and description `Session Manager access for the MongoDB Liquibase Harness lab EC2 instance.`
 5. Review trust: principal `ec2.amazonaws.com`, action `sts:AssumeRole`, effect `Allow`. Review permissions: only `AmazonSSMManagedInstanceCore`. No CloudWatch agent policy or administrator policy is selected.
-6. **Pending:** obtain the browser tool's required confirmation for creating this role and assigning it to the lab server. Then click **Create role**, verify success, and record the role/profile ARN. Do not infer creation from this document.
+6. After the user approved creating and assigning this role, click **Create role**. The console confirmed success. **View role** showed role ARN `arn:aws:iam::224772450208:role/mongodb-lab-ec2-ssm`, instance-profile ARN `arn:aws:iam::224772450208:instance-profile/mongodb-lab-ec2-ssm`, and exactly one attached policy, `AmazonSSMManagedInstanceCore`. Approval is already satisfied; do not request it again for this scope.
 
 This AWS-managed policy supports the agent's core Systems Manager communication. It also includes SSM parameter-read permissions with a wildcard resource; it is not literally an SSM-connection-only custom policy. The role does not grant the signed-in person's `StartSession` permissions. [AWS policy definition](https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonSSMManagedInstanceCore.html).
 
@@ -42,7 +42,7 @@ This AWS-managed policy supports the agent's core Systems Manager communication.
 | Root disk | `/dev/xvda`, 30 GiB, gp3, 3000 IOPS, 125 MiB/s; initialization rate left unset |
 | Encryption | Encrypted; `(default) aws/ebs`, key alias `alias/aws/ebs` |
 | Delete disk on termination | Yes |
-| Instance profile | **Pending creation/confirmation/selection** |
+| Instance profile | `arn:aws:iam::224772450208:instance-profile/mongodb-lab-ec2-ssm` selected and read back |
 | Shutdown behavior | Stop |
 | Metadata | Enabled; V2 only; hop limit 1 |
 | User data | Contents of [user-data.sh](../infra/aws/user-data.sh), pasted as plain text; already-base64 checkbox unchecked |
@@ -51,7 +51,7 @@ Use **Edit** in Network settings to name the security group and choose the subne
 
 The small `t3.micro` default is unsuitable for this combined runtime. This account's picker allowed `m7i-flex.large`; `t3.medium` and `t3.large` were disabled. The `c7i-flex.large` option had only 4 GiB for a small compute-price reduction; the prepared choice retains the handoff's 8 GiB design.
 
-**Pending before Launch instance:** create/select the intended profile, confirm the complete request and budget, inspect any final warnings and unexpected service/volume options, then submit only once and record the resulting instance ID. The plan file is a review manifest, not an AWS API payload.
+**Pending before Launch instance:** select the created profile, confirm the complete request and budget, inspect any final warnings and unexpected service/volume options, then submit only once and record the resulting instance ID. The plan file is a review manifest, not an AWS API payload.
 
 ## 4. Automatic stop safeguard and required tests
 

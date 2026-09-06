@@ -1,6 +1,6 @@
 # Harness configuration
 
-Export the actual saved `mongodb-lab-runtime-check` pipeline from Default Project after browser access is restored. No complete YAML was exported in this task, so no reconstructed pipeline is represented here as an account-validated export.
+`runtime-check.yaml` was copied from the saved, read-only `mongodb-lab-runtime-check` pipeline in Harness Default Project on September 6, 2026. The editor displayed Validated and Save was disabled. The complete YAML was exported through the editor clipboard; no pipeline changes or execution occurred.
 
 Expected baseline from the handoff: Custom stage, Bash Shell Script, On Delegate, selector `mongodb-lab`, timeout `2m`. Use the contents of `scripts/runtime-check.sh` for the tooling check after validating the actual schema.
 
