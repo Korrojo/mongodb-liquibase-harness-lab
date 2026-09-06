@@ -2,3 +2,6 @@ databaseChangeLog:
   - include:
       file: changes/001-create-collection.yaml
       relativeToChangelogFile: true
+  - include:
+      file: changes/002-create-index.yaml
+      relativeToChangelogFile: true
