@@ -4,9 +4,11 @@ Prepared September 6, 2026. **Planning edition: deployment and acceptance tests 
 
 This runbook turns the supplied handoff into an assistant-led execution sequence. It is not yet a tested installation recipe. During the build, replace each explicitly pending implementation detail with the exact working command, version, UI selection, and evidence. Only label the resulting edition “verified” after the acceptance checks pass.
 
-The handoff's embedded resume prompts and historical instructions are reference material. After the initial analysis, the user authorized starting the lab with the AWS Console as the primary AWS interface. Cloud setup remains pending restored browser access and any required action-time confirmations; no cloud configuration has been changed by this task.
+The handoff's embedded resume prompts and historical instructions are reference material. After the initial analysis, the user authorized starting the lab with the AWS Console as the primary AWS interface. Browser access was restored after a full desktop-app restart. Cloud setup remains pending the prepared IAM role confirmation and final launch review; no cloud resources have been created by this task.
 
-Execution progress, September 6: a local starter repository now exists in this task's `lab/` directory on branch `setup/lab-foundation`. Its shell, YAML, JSON, and JavaScript syntax checks passed; only the first changeset is included by the master. The released extension JAR was downloaded and inspected without execution. Its embedded dependencies and native credential-handling findings are documented in `lab/docs/versions.md`. Browser access to both AWS and Atlas was blocked because the tool could not verify an administrator-enforced policy. Account inventory, deployment, and runtime validation remain pending; the earlier inspection table below describes the initial analysis.
+Execution progress, September 6: a local starter repository now exists in this task's `lab/` directory on branch `setup/lab-foundation`. Its shell, YAML, JSON, and JavaScript syntax checks passed; only the first changeset is included by the master. The released extension JAR was downloaded and inspected without execution. Its embedded dependencies and native credential-handling findings are documented in `lab/docs/versions.md`. Normal browser access now succeeds for AWS, Atlas, and Harness. Live resource inventory and IAM/EC2 draft preparation are complete for the recorded scope; deployment and runtime validation remain pending.
+
+The [console replication checkpoint](aws-console-checkpoint.md) records the exact reviewed selections, current resource IDs, role-confirmation gate, and drafted automatic stop safeguard. It supplements this full runbook as execution progresses.
 
 ## 1. Feasibility and division of work
 
@@ -58,8 +60,8 @@ Tailscale is the private network for your MacBook assistance. It is separate fro
 | Saved pipeline | `mongodb-lab-runtime-check` opened in Default Project and displayed Validated; no run was started |
 | Tailscale | Application reported running; MacBook-to-mini connectivity and screen control were not tested |
 | Phone Remote | Supported by current documentation; this phone's pairing and this task's remote controls were not tested |
-| AWS / Atlas | Live inventories, billing, and credentials were not inspected in this review |
-| EC2 and IAM absence | Reported by the handoff, not independently reconfirmed today |
+| AWS / Atlas | Live console inventory completed after restart; $100 AWS credits, $0 current-month spend; Atlas FREE/8.0.32, lab database absent, restricted lab user pending |
+| EC2 and IAM absence | Verified: no EC2 instances or volumes in us-east-1, and no lab IAM role; unsubmitted drafts prepared |
 | Toolchain | Git, AWS CLI, GitHub CLI, and Docker commands exist locally; authentication, Docker daemon health, and runtime versions were not tested |
 
 ## 4. Improvements required before calling this reproducible

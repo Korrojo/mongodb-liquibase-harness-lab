@@ -7,9 +7,9 @@
   "instance_type_candidate": "m7i-flex.large",
   "architecture": "x86_64",
   "os_candidate": "Amazon Linux 2023",
-  "verified_ami_id": null,
-  "verified_vpc_id": null,
-  "verified_subnet_id": null,
+  "verified_ami_id": "ami-081b0a6eac00b4f53",
+  "verified_vpc_id": "vpc-0d7b3e0e5bffb47b7",
+  "verified_subnet_id": "subnet-09c6def06208373b3",
   "assign_public_ipv4": true,
   "inbound_security_group_rules": [],
   "key_pair": null,
@@ -26,18 +26,25 @@
     "iops": 3000,
     "throughput_mib_per_second": 125,
     "delete_on_termination": true,
-    "verified_kms_key": null
+    "verified_kms_key": "alias/aws/ebs (default option selected in launch draft)"
   },
-  "metadata": { "tokens": "required", "hop_limit": 1 },
+  "metadata": {
+    "tokens": "required",
+    "hop_limit": 1
+  },
   "instance_initiated_shutdown_behavior": "stop",
-  "shutdown_safeguard": "boot_armed_host_timer_to_implement_and_test",
+  "shutdown_safeguard": "Two-hour systemd timer drafted in infra/aws/user-data.sh; not deployed or tested",
   "shutdown_deadline": null,
   "cleanup_date": null,
   "spending_context": {
     "handoff_budget_usd": "10-20",
     "handoff_compute_usd_per_hour": 0.09576,
-    "current_account_price_verified": false,
-    "credits_verified": false
+    "current_account_price_verified": true,
+    "credits_verified": true,
+    "verified_credits_usd": 100,
+    "verified_current_month_spend_usd": 0,
+    "verified_compute_usd_per_hour": 0.09576,
+    "verified_date": "2026-09-06"
   },
   "prelaunch_checks": [
     "Actual account and existing resource inventory",

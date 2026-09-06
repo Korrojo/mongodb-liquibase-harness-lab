@@ -4,8 +4,8 @@ Inspected September 6, 2026. No runtime has been built or deployed.
 
 | Component | Evidence | Status |
 |---|---|---|
-| EC2 OS/architecture | Amazon Linux 2023, x86_64 planned | AMI pending live verification |
-| Harness base image | Account-specific Docker delegate path from handoff | Exact tag/digest pending |
+| EC2 OS/architecture | Launch form: Amazon Linux 2023 `2023.12.20260831.0`, kernel 6.18, x86_64, `ami-081b0a6eac00b4f53` | Draft only; not booted |
+| Harness base image | Live Docker installer: `us-docker.pkg.dev/gar-prod-setup/harness-public/harness/delegate:26.08.89804` | Tag verified in UI; digest and runtime validation pending |
 | Liquibase | 4.33.0 in embedded extension build metadata | Candidate, not integration-tested |
 | Harness extension | `io.harness:liquibase-mongodb-dbops-extension:1.0.0-4.33.0` downloaded from vendor repository | Archive and bytecode inspected; not executed |
 | MongoDB Java driver | Embedded metadata declares `mongodb-driver-sync:5.5.1` | Full resolved dependency set pending |
