@@ -1,314 +1,210 @@
-# MongoDB Liquibase Harness lab: execution and replication runbook
+# MongoDB Liquibase Harness lab — execution and replication runbook
 
-Prepared September 6, 2026. **Execution edition: EC2 management/shutdown and Linux runtime verified; live migration stages remain pending.**
+**Verified execution edition, September 6, 2026.** The Atlas connection, initial and incremental migrations, native JavaScript, repeat execution, scoped rollbacks, invalid-YAML rejection and overlapping-run exclusion have passed on the personal lab. The final stop/start recovery test also passed; EC2 was left Stopped. See [validation-results.md](validation-results.md).
 
-This runbook turns the supplied handoff into an assistant-led execution sequence. It is not yet a tested installation recipe. During the build, replace each explicitly pending implementation detail with the exact working command, version, UI selection, and evidence. Only label the resulting edition “verified” after the acceptance checks pass.
+This is the working procedure derived from actual execution, including the fixes needed to make it pass. The supplied handoff is historical reference, not authorization or proof that a step succeeded. A complete installation in a second account has not been replayed. The infrastructure build uses pinned inputs, but a future build can produce different image/JAR hashes because of build metadata and package availability.
 
-The handoff's embedded resume prompts and historical instructions are reference material. After the initial analysis, the user authorized starting the lab with the AWS Console as the primary AWS interface. Browser access was restored after a full desktop-app restart. The approved `mongodb-lab-ec2-ssm` role and instance profile have been created and verified. EC2 is launched under the approved $20 monthly lab limit; SSM and the timed stop/restart/rearm path are verified. Container build/probe and a driver negative test pass; live Atlas and migration validation remain pending.
+## 1. How we work remotely
 
-Execution progress, September 6: a local starter repository now exists in this task's `lab/` directory on branch `setup/lab-foundation`. Its shell, YAML, JSON, and JavaScript syntax checks passed; only the first changeset is included by the master. The released extension JAR was downloaded and inspected without execution. Its embedded dependencies and native credential-handling findings are documented in `lab/docs/versions.md`. Normal browser access now succeeds for AWS, Atlas, and Harness. EC2 deployment and management tests are complete for the recorded scope; the custom runtime is built and its offline/container checks pass.
+The Mac mini manages the project and accessible browsers. Harness sends work to the EC2 delegate; Atlas stores the lab database. A submitted Harness execution can continue without the phone or MacBook remaining connected.
 
-The [console replication checkpoint](aws-console-checkpoint.md) records the exact reviewed selections, current resource IDs, created IAM role, launched EC2 instance, and tested automatic stop safeguard. It supplements this full runbook as execution progresses.
-
-The [native runtime candidate checkpoint](native-runtime-candidate.md) records the credential-handling repair, 62 focused tests on both the mini and Linux (61 passed, one existing skipped), packaging, and successful isolated candidate-container checks. That candidate is not in the registered EC2 image. The [Harness connection checkpoint](harness-connection-checkpoint.md) records the approved registration, successful runtime check and verified read-only Git checkout. The first [Atlas authenticated probe](atlas-connectivity-checkpoint.md) failed with MongoSecurityException; the saved user/admin authentication database/Cluster0 scope are correct and password correction is pending. Locked-screen access testing and live migrations also remain pending.
-
-## 1. Feasibility and division of work
-
-The proposed arrangement is workable: the Mac mini manages the project, the phone directs the assistant, and the MacBook provides human access when needed. Keep the migration execution on EC2 and the database in Atlas.
-
-| Participant or system | Responsibility |
+| Place | Work performed there |
 |---|---|
-| Assistant on the Mac mini | Inspect existing resources; write the repository, scripts, image recipe, and documentation; operate accessible consoles; build, test, troubleshoot, and record results within granted access |
-| You on the phone | Continue this task, make decisions, review results, and handle supported approval prompts |
-| You on the MacBook | Screen-share into the Mac mini for login/MFA, credential entry, permission dialogs, or browser controls that require human action |
-| Harness and EC2 | Execute an accepted pipeline run independently of the phone connection |
-| Atlas | Store only the isolated lab database and synthetic records |
+| Phone, ChatGPT Remote | Continue this same task, review progress, give decisions and supported approvals |
+| Mac mini, this task | Edit/review files, publish the private setup branch, operate the signed-in browsers |
+| MacBook, Screen Sharing over Tailscale | Complete desktop login, MFA, secret entry or OS permission prompts when needed |
+| AWS Console in the mini's browser | Create/reuse resources; inspect, start, connect to and stop the one EC2 instance |
+| AWS Session Manager terminal | Linux host administration, Docker builds and helper installation |
+| Harness pipeline | Checkout, lock, Liquibase commands, database assertions and cleanup |
+| Atlas browser | Database-user settings and independent inspection of documents/history/indexes |
 
-The Mac mini staying on does not make the assistant work indefinitely between requests. It also does not guarantee that expired logins, permissions, restarts, or unavailable tools can be resolved without you. Work in bounded phases, each ending with a recorded checkpoint.
+**AWS Console is the primary AWS interface for this lab.** Terminal commands below run on EC2 through Session Manager unless explicitly marked **Mac mini**. They are not AWS CLI commands, and no AWS CLI credential configuration is needed for this route.
 
-## 2. Architecture to retain
+The mini's AC sleep setting was 0. Display sleep, screen lock, logout, system sleep and an app/browser login expiring are different events. Keep the mini awake, online and the desktop app running. Tailscale provides connectivity; Screen Sharing provides the desktop view. Access after screen lock remains unverified: the Locked use setting was not confirmed, and a phone-after-lock test has not passed. Do not weaken login or security settings merely to assume unattended operation.
 
-```text
-Phone: ChatGPT Remote ──► Mac mini: assistant, browser access, project files
-MacBook: Screen Sharing over Tailscale ──► same Mac mini session
+Before relying on the phone alone, complete this short acceptance test: from the phone continue this task and request a harmless file read plus a read of the already-open Harness page; lock the mini normally; repeat the same requests; then verify MacBook Screen Sharing over a phone hotspot reaches the same mini session. If a supported Locked use setting requires permission, complete it personally on the mini and retest. Browser login/MFA renewal may still require human help. No recurring background work has been scheduled.
 
-Personal GitHub: versioned changelogs and runtime recipe
-        │ checkout an exact commit
-        ▼
-Harness: manual pipeline, secrets, execution history
-        │ task delivered through the delegate's outbound connection
-        ▼
-EC2: Docker → persistent custom Harness delegate container
-                  Git + Java + Liquibase + one MongoDB extension + mongosh
-        │ TLS connection from EC2 (Atlas currently retains an existing broad access rule)
-        ▼
-Atlas Free: liquibase_lab
+## 2. Recorded personal-lab targets
 
-AWS Session Manager ──► EC2 host administration
+| Item | Value |
+|---|---|
+| Private Git repository | [Korrojo/mongodb-liquibase-harness-lab](https://github.com/Korrojo/mongodb-liquibase-harness-lab/tree/setup/lab-foundation) |
+| Working branch | `setup/lab-foundation`; never push lab changes directly to `main` |
+| AWS | Learning-account `224772450208`, `us-east-1`, user `lab-admin` |
+| EC2 | `i-0635332c43aa733a5`, name `mongodb-lab-delegate` |
+| Harness | Account `7WPs0XUoT4CnMpX3j28V4g`, organization `default`, project `default_project` |
+| Delegate / selector | `mongodb-lab` |
+| Atlas | `PROJECT_01`, `Cluster0`, endpoint `cluster0.okiw7qi.mongodb.net` |
+| Database / database user | `liquibase_lab` / `liquibase_lab_user`; authentication database `admin` |
+| Atlas role | `readWrite` on `liquibase_lab`, restricted to Cluster0 |
+| Harness encrypted Text secret | Project-scoped `atlas_password` |
+| Host checkout | `/opt/mongodb-lab/repo` |
+| Active container | `mongodb-lab`, native candidate image; UID 1001 |
+
+[EC2 details](https://us-east-1.console.aws.amazon.com/ec2/home?region=us-east-1#InstanceDetails:instanceId=i-0635332c43aa733a5) · [Harness pipelines](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines) · [Atlas Data Explorer](https://cloud.mongodb.com/v2/6611f5088cbf733a72830464#/explorer/6611f5a08cbf733a72831a20)
+
+These are personal-lab identifiers embedded in the scripts and YAML. A different account/repository/cluster/database requires a reviewed adaptation of all target guards, helpers, pipeline identifiers, origin URLs and permissions, followed by a new commit sequence. Do not paste these identifiers into an unrelated environment.
+
+## 3. Choose the correct starting point
+
+- **Resume this completed lab:** use section 4, then run `verify-final` from section 9. Do not run `index-cycle` or `native-cycle` again against phase 3: their guards intentionally require the previous phase.
+- **Repeat the migration lessons:** use the existing infrastructure and a confirmed empty, disposable `liquibase_lab`, then follow sections 6–10 in order. Clearing the existing database would erase the retained evidence and needs a deliberate reset decision; it has not been done by this task.
+- **Rebuild the EC2 runtime:** follow [build-and-install.md](build-and-install.md), then sections 5–10. Preserve the old host/volume until the replacement has passed verification. The build instructions are for the recorded personal accounts; they do not promise a byte-identical new image.
+
+The safe everyday verification path is nondestructive. No collection drop or history repair is needed to resume.
+
+## 4. Start a working session
+
+1. Open the EC2 details link. Check the account, region, name and exact instance ID. Use the page's **Refresh instances** button. During this lab, a stale single-page view continued to say Running until that button was used.
+2. If Stopped, choose **Instance state → Start instance**. Reuse this instance. Wait for Running and status checks, then **Connect → Session Manager → Connect**. No SSH port/key pair is required.
+3. In the new Session Manager terminal, run these read-only checks:
+
+```bash
+sudo systemctl is-active amazon-ssm-agent docker mongodb-lab-autostop.timer
+sudo systemctl list-timers --all mongodb-lab-autostop.timer --no-pager
+sudo docker inspect mongodb-lab --format 'STATE={{.State.Status}} HEALTH={{.State.Health.Status}} IMAGE={{.Image}}'
+sudo docker inspect mongodb-lab --format 'MOUNTS={{range .Mounts}}{{.Destination}}:rw={{.RW}} {{end}}'
 ```
 
-Tailscale is the private network for your MacBook assistance. It is separate from ChatGPT Remote and from AWS Session Manager. Tailscale connectivity alone does not supply a screen-sharing application or authorize desktop control. Use the Mac's Screen Sharing facility over the private connection, with access restricted to your intended account. [Apple Screen Sharing](https://support.apple.com/guide/mac-help/share-the-screen-of-another-mac-mh14066/mac), [Tailscale quickstart](https://tailscale.com/docs/how-to/quickstart).
+4. Require the three services active, the container running and healthy, the expected image from [versions.md](versions.md), and `/opt/mongodb-lab/git:rw=false`. Initial container health can be briefly unhealthy during startup; wait for healthy before a run.
+5. Record the actual stop deadline. The boot-armed timer stops the instance after two hours; it does not gracefully drain a pipeline. Do not start a seven-minute migration step with less than ten minutes remaining. Finish and stop the session before the deadline rather than silently disabling the safeguard.
+6. Read the current public IPv4 from the refreshed EC2 details page. It changes after stop/start. Atlas currently has a pre-existing `0.0.0.0/0` rule among six rules; those rules were left unchanged. This lab therefore does **not** demonstrate a narrow `/32` network boundary. On a separately reviewed restricted configuration, update the EC2 `/32` after each new address; the browser's Add Current IP normally selects the mini's address.
+7. In Harness Project Settings → Delegates, require `mongodb-lab` Connected. A stopped EC2 delegate being disconnected is expected. Never start the preserved backup containers alongside the active delegate.
 
-## 3. What this review established
+## 5. Secrets and read-only connectivity
 
-| Item | Evidence and status on September 6 |
-|---|---|
-| Source handoff | Read from the iCloud Downloads Markdown file named in the request |
-| Local project | Writable task workspace exists; `sources/` remains read-only reference material |
-| Local capacity | Approximately 21 GiB available at inspection; large image builds should happen on EC2 |
-| Mac power settings | AC sleep setting was 0; display sleep was 10 minutes |
-| Browser tools | Chrome extension and in-app browser surfaces were available |
-| Harness sign-in | Existing in-app tab was signed into the account named in the handoff |
-| Saved pipelines | Runtime check Build 1 succeeded; read-only Atlas check Build 1 failed at authentication |
-| Tailscale | Application reported running; MacBook-to-mini connectivity and screen control were not tested |
-| Phone Remote | Supported by current documentation; this phone's pairing and this task's remote controls were not tested |
-| AWS / Atlas | Initial billing snapshot: $100 credits/$0 month spend, subject to delay; Atlas FREE/8.0.32, saved lab user restricted to Cluster0; password correction pending |
-| EC2 and IAM | Approved role created; instance `i-0635332c43aa733a5` launched; Session Manager and timed stop/restart/rearm passed |
-| Toolchain | EC2 Docker and custom runtime verified; GitHub CLI/private publication works locally and scoped deploy-key checkout works on EC2 |
+Use the **Atlas database-user password**, not the Atlas website password or the Harness website password.
 
-## 4. Improvements required before calling this reproducible
+1. Atlas → Database Access → edit `liquibase_lab_user`. Verify `readWrite @ liquibase_lab`, Cluster0 scope and SCRAM. If changing its password, save that change in Atlas first.
+2. Harness → Project Settings → Secrets → `atlas_password` → Edit. Paste that exact raw password into **Secret Value** and Save. Do not add quotation marks, URL encoding or a connection string. The prepared visible browser handoff was necessary when an earlier hidden tab was not visible to the user.
+3. Never put the password in this task, Git, YAML text, a command argument or a screenshot. The YAML's supported environment variable value is `<+secrets.getValue("atlas_password")>`.
+4. Run `mongodb-lab-atlas-connectivity`, with **Skip preflight check unchecked**. Require Harness Success and `ATLAS_CONNECTIVITY_PASS`. This uses the real delegate, TLS, an authenticated ping and a collection-name read; it writes no database objects.
 
-1. **Prove Remote access before spending.** Demonstrate local file access and browser reading from a phone prompt; test publication through the real permitted route once the lab repository exists.
-2. **Capture actual account state.** A saved pipeline and a visible module do not establish successful execution or every required free entitlement.
-3. **Pin the entire runtime.** Include the delegate image, migration Java, Liquibase, extension, dependency graph, mongosh, OS, and architecture. The reviewed extension documents `1.0.0-4.33.0` as based on Liquibase `4.33.0`; that is a candidate pair, not a tested compatibility claim. Its README also contains older dependency examples, so resolve dependencies from the selected release rather than copying that list. [Extension repository](https://github.com/harness-community/liquibase-mongodb-extension).
-4. **Control custom-image upgrades.** Harness says delegate auto-upgrade can replace the custom image and remove added tools. Verify the applicable Docker delegate update mechanism, keep this custom runtime under explicit update control, and document how to rebuild and retest against supported base versions. Do not copy Kubernetes updater commands into this Docker installation. [Harness custom images](https://developer.harness.io/docs/platform/delegates/install-delegates/build-custom-delegate-images-with-third-party-tools/).
-5. **Test credential handling through native execution.** A successful Java-driver connection does not prove `mongoFile` receives credentials safely. Inspect the chosen native executor and test both authentication paths without exposing secrets.
-6. **Define working-directory and locking behavior.** Separate Shell Script steps can have different shells and delegate placement. For the initial one-delegate lab, use one orchestration script for checkout through verification and cleanup, with a shared target lock around the whole operation. Keep the Liquibase database lock too. [Harness delegate placement](https://developer.harness.io/docs/platform/delegates/manage-delegates/run-all-pipeline-steps-in-one-pod/).
-7. **Make shutdown and IP renewal explicit.** A budget notification is not a shutdown mechanism; changing the Atlas allowlist after stop/start is part of the normal start procedure.
+After saving the matching Harness secret, Build 3 passed. The two earlier MongoSecurityException failures are retained as historical evidence, not current blockers. If authentication fails again, stop at this read-only check and reconcile the lab user's saved password and scope.
 
-## 5. Ordered execution steps
+## 6. Save and run the supplied pipelines
 
-### Step 0 — Establish the phone and browser workflow
+The five credential-free definitions are in `.harness/`:
 
-**Where:** Mac mini desktop, phone, and MacBook. **Lead:** assistant checks; user completes pairing and human prompts.
+| YAML | Pipeline | Purpose |
+|---|---|---|
+| `runtime-check.yaml` | `mongodb-lab-runtime-check` | Actual delegate tool versions |
+| `atlas-connectivity.yaml` | `mongodb-lab-atlas-connectivity` | Java-driver authenticated read |
+| `first-migration.yaml` | `mongodb-lab-first-migration` | Phase 1 plus repeat/no-op |
+| `native-connectivity.yaml` | `mongodb-lab-native-connectivity` | Real mongosh read and credential-handling assertions |
+| `exercises.yaml` | `mongodb-lab-exercises` | Incremental cycles and acceptance exercises |
 
-1. On the mini, open ChatGPT desktop Settings → Connections → Control this Mac or PC. Reuse an existing working pairing; otherwise use Set up/Add and scan its QR code on the phone.
-2. Use the same ChatGPT account and workspace on both devices. Keep the host awake, online, with the app running. Review Computer Use and browser access on the host. Remote uses the host's tools, credentials, and approval rules. [OpenAI Remote connections](https://learn.chatgpt.com/docs/remote-connections).
-3. From the phone, open Remote, select the Mac mini, and continue this task. Ask the assistant to create and read back a harmless readiness note in this task's output directory, and read the already-open Harness pipeline.
-4. On the MacBook, test screen sharing into the mini over Tailscale. Confirm you can interact with the same desktop account and browser profile used by this task. Test this away from the home LAN, such as through a phone hotspot.
-5. Sign into AWS, GitHub, and Atlas in an assistant-accessible browser **on the mini**. The existing Harness in-app session already works. A browser signed in only on the MacBook does not provide the mini with that session.
-6. Establish a handover convention: assistant identifies the page and exact action; user takes control; user reports completion; assistant rereads the page before continuing.
+For a missing pipeline, open Harness → Pipelines → Create a Pipeline, use the name above, choose INLINE storage, open **YAML → Edit YAML → Enable editing**, replace the full document with its matching repository file, and Save. Wait for **Validated** and the Save button to become disabled. Existing matching pipelines should be reused. The first-migration saved YAML was read back and matched the repository definition.
 
-**Pass:** phone prompt completes a local and browser read; MacBook fallback reaches the same mini session. Record failures before depending on unattended access. Test any necessary approval interaction when a real action requests it; do not create a sensitive action merely to test approvals.
+These use Custom stages and Shell Script steps on the delegate, not the paid Database DevOps module. A visible menu or trial banner does not establish future entitlement; these particular pipelines executed successfully in this account on the recorded date.
 
-### Step 1 — Reconcile the four accounts
+For each run choose **Run**, fill the inputs listed below, uncheck **Skip preflight check**, and choose **Run Pipeline**. `LAB_COMMIT` must be the complete 40-character SHA, not a branch name. Do not type a secret into either input. Check the run's status and the log's **Bottom** button; logs are virtualized and the initial visible lines may omit the final result.
 
-**Where:** accessible browsers on the mini. **Lead:** assistant, read-only first.
+### Exact revision sequence
 
-1. AWS: confirm the intended learning account and `us-east-1`. Inspect EC2 instances by name and tags, IAM role `mongodb-lab-ec2-ssm`, security groups, and relevant EBS volumes. Do not recreate a resource just because the handoff says it was absent.
-2. Inspect the recorded default VPC and candidate subnet. Verify an attached internet gateway, subnet route to it, public-IP assignment, DNS, and network ACLs permitting required outbound traffic and replies.
-3. Harness: confirm Default Project, the saved runtime pipeline, current delegate inventory, Docker installation path, relevant CD entitlement, built-in secret manager, and any trial expiration affecting these features. Export the actual pipeline definition when preparing the repository.
-4. Atlas: identify the existing project and Free cluster, its state and region, current network rules, database users, and whether `liquibase_lab` already contains anything. Avoid broadening or deleting existing access.
-5. GitHub: confirm the personal owner and whether a lab repository already exists. Choose a private repository for the new lab if none exists.
+| Lesson | `LAB_COMMIT` | `LAB_EXERCISE` | Required starting state |
+|---|---|---|---|
+| First migration pipeline | `19f335da99e7079961a07f623db09acac5ec7a45` | No such input | Empty lab or verified phase 1 |
+| Index cycle | `5ba7cd478b547a09957b59bfe37e58733f54e88f` | `index-cycle` | Phase 1 |
+| Native fixture cycle | `232adee3f6477edd14dbeed6a828a7366d19862d` | `native-cycle` | Phase 2, native runtime verified |
+| Invalid YAML | `e9a7bd6ba2d2f19f84d6e42a91d71ae6e6faf6e4` | `validation-failure` | Phase 3 |
+| Overlap test, twice | `e9a7bd6ba2d2f19f84d6e42a91d71ae6e6faf6e4` | `concurrency` | Phase 3 |
+| Everyday/restart verification | `e9a7bd6ba2d2f19f84d6e42a91d71ae6e6faf6e4` | `verify-final` | Phase 3 |
 
-**Pass:** a dated resource inventory distinguishes “found,” “absent,” and “not accessible,” with exact non-secret identifiers and navigation links. Entitlement uncertainty must be resolved before launch, or explicitly accepted as a bounded runtime experiment.
+Do not use the latest master for the first exercise: it includes all three changesets. Applied paths, IDs, authors, checksums and script contents stay immutable. Preserve this private branch's history so the phase commits remain available.
 
-### Step 2 — Prepare the working repository and documentation
+## 7. Collection and index lessons
 
-**Where:** authorized writable local directory; then private GitHub repository. **Lead:** assistant.
+**Phase 1:** Run the first-migration pipeline at its exact revision. Its one step acquires the target lock, creates a private temporary directory, checks out the exact SHA, performs the state guard, runs `validate`, `status`, `update`, verifies state, runs `update` again and verifies the same fingerprint. It then checks status and removes its own temporary directory.
 
-1. Keep the source handoff and synced `sources/` files unchanged. Put authored files in a normal working repository; this review's `outputs/` directory is the initial deliverable location, not proof of GitHub publication or phone file synchronization.
-2. Prepare a focused initial branch. Review the files before publication and verify that publication actually succeeds from this Remote workflow. Do not equate a local commit with a remote commit.
-3. Establish the following deliverables; these paths describe files to implement, not files already created:
+Require `FIRST_MIGRATION_AND_REPEAT_PASS`. The state must contain only `lab_items`, `DATABASECHANGELOG` and `DATABASECHANGELOGLOCK`; one executed 001 history row with checksum; zero fixture documents; the default `_id_` index; and no active database lock. The repeat adds no changeset or document.
 
-```text
-README.md
-.gitignore
-.harness/runtime-check.yaml
-.harness/mongodb-migrate.yaml
-changelog/db.changelog-master.yaml
-changelog/changes/001-create-collection.yaml
-changelog/changes/002-create-index.yaml
-changelog/changes/003-seed-data.yaml
-changelog/scripts/003-seed-data.js
-config/liquibase.properties.example
-scripts/preflight.sh
-scripts/run-lab.sh
-scripts/verify.sh
-scripts/rollback.sh
-infra/delegate/Dockerfile
-infra/delegate/versions.lock
-infra/host-bootstrap.sh
-docs/runbook.md
-docs/resource-inventory.md
-docs/versions.md
-docs/validation-results.md
-docs/cleanup.md
+**Phase 2:** Run exercises with `index-cycle` at its revision. It starts from phase 1, validates, applies 002, repeats the update without state change, runs `rollback-count --count=1`, verifies phase 1, and reapplies 002. Require `INCREMENTAL_REPEAT_PASS`, `SCOPED_ROLLBACK_PASS` and `EXERCISE_CYCLE_PASS exercise=index-cycle`.
+
+Final phase 2 has two history rows, zero documents and the named unique `{sku:1}` index `lab_sku_unique` in addition to `_id_`. The rollback removes only that named index. Changeset 001 deliberately has no automated collection-dropping rollback.
+
+### Permission setting discovered during the first run
+
+The first attempt failed because tracking-table adjustment tried `collMod`, which this readWrite user could not run. The working scripts set:
+
+```bash
+export LIQUIBASE_MONGODB_SUPPORTS_VALIDATOR=false
 ```
 
-4. Ignore credentials, populated environment files, tokens, downloaded binaries, raw logs, and temporary workspaces. Keep only sanitized evidence and credential-free examples in Git.
-5. For every final procedure, include: purpose, where it runs, prerequisites, exact action, placeholders, expected result, verification, failure handling, and restart/cleanup implications.
+This disables tracking-collection schema validator changes while retaining the default tracking-table adjustment and its unique history index. We did not grant a broader Atlas role. Liquibase history, checksums and database locking remain enabled; schema validation of those tracking documents is the tradeoff. This was a permission failure, not proof that Atlas Free cannot support validators. [MongoDB collMod privileges](https://www.mongodb.com/docs/manual/reference/command/collMod/).
 
-**Pass:** the starter repository is reviewable; its remote visibility and commit SHA are verified; no secrets are present.
+## 8. Native JavaScript lesson
 
-### Step 3 — Finalize costs and the launch configuration
+Before 003, the patched native runtime must be active and `mongodb-lab-native-connectivity` must pass. Require `LIVE_NATIVE_READ_ONLY_PASS` and `NATIVE_ATLAS_ACCEPTANCE_PASS`. This real Atlas check asserts that the connection URI/password are absent from process arguments and generated script text, temporary script permissions are 0600, the script is removed, and nonempty mongosh-owned logs contain no raw/encoded password or complete URI.
 
-**Where:** AWS console. **Lead:** assistant prepares a concrete review.
+The original artifact needed credential-handling repairs. Both reviewed patches in `infra/delegate/patches/` are required for native execution. The repaired URI is passed through the child environment and removed before the user script executes. Privileged processes or another process with equivalent OS access can still inspect environments; this is a dedicated trusted runtime, not isolation from root or arbitrary untrusted code.
 
-Retain the handoff's proposed settings unless current account evidence requires a change:
+Run exercises with `native-cycle` at the exact revision. Changeset 003 explicitly selects:
 
-| Setting | Proposed value or required check |
+```yaml
+runWith: mongosh
+```
+
+Its `mongoFile` applies only three synthetic fixtures. Omitting that selector originally sent MongoshStatement to the wrong executor. Before fixing it, Atlas was checked and showed 003 had not been applied; no executed changeset was edited. [Harness native MongoDB examples](https://developer.harness.io/docs/database-devops/concepts/database-devops/concepts/mongodb-command/).
+
+The exercise applies, repeats, rolls back the fixtures and reapplies. Require `INCREMENTAL_REPEAT_PASS`, `SCOPED_ROLLBACK_PASS`, `NATIVE_EXERCISE_FILES_PASS` and `EXERCISE_CYCLE_PASS exercise=native-cycle`.
+
+Final phase 3 is exactly:
+
+| `_id` | `sku` | `name` |
+|---|---|---|
+| `lab-001` | `LAB-001` | Synthetic notebook |
+| `lab-002` | `LAB-002` | Synthetic pencil |
+| `lab-003` | `LAB-003` | Synthetic folder |
+
+All three carry `labFixture: mongodb-liquibase-harness`. The rollback deletes only these reserved IDs with that fixture marker, preserving the collection and its index. The guard refuses conflicting reserved IDs. History has one executed row for each of 001, 002 and 003, with checksums; the lock is released. Inspect Atlas Data Explorer → `liquibase_lab` → `lab_items` → **Refresh documents** to confirm the three records independently.
+
+## 9. Failure, overlap and restart lessons
+
+**Invalid YAML:** Run `validation-failure`. It creates a deliberately malformed private file and explicitly supplies its search directory. It requires a nonzero Liquibase exit and parser-specific text such as `while parsing a flow node`, checks the phase-3 fingerprint is unchanged, and prints `VALIDATION_FAILURE_BLOCKED_PASS`. The Harness exercise succeeds because the expected rejection was verified; no `update` is invoked. An earlier missing-file rejection was insufficient and is excluded from acceptance.
+
+**Overlapping runs:** Open the exercises pipeline in two tabs. Prepare both with `concurrency` and the revision above. Start the first; wait for `CONCURRENCY_LOCK_HELD`, which holds the shared lock for 45 seconds; then immediately start the second. Expected: one run succeeds with `FINAL_NOOP_PASS`; the other fails with `LAB_BUSY` and exit 75 before checkout. This expected failed Harness execution demonstrates exclusion. Do not treat two serialized successes as proof of overlap.
+
+The host `flock` covers only scripts using `/opt/mongodb-lab/locks/cluster0-liquibase_lab.lock` on this dedicated container. It is not a distributed lock across unrelated hosts. Liquibase's database lock remains an additional safeguard. Only reviewed trusted commits are allowed to use the saved secret.
+
+**Restart:** After all executions finish, verify cleanup with the following command in the EC2 Session Manager terminal:
+
+```bash
+sudo docker exec -u 1001 mongodb-lab bash -c 'set -e; flock -n /opt/mongodb-lab/locks/cluster0-liquibase_lab.lock true; test -z "$(find /opt/mongodb-lab/work -mindepth 1 -maxdepth 1 -print -quit)"; printf "WORKSPACE_CLEAN_AND_TARGET_UNLOCKED_PASS\n"'
+```
+
+Then EC2 → Instance state → Stop instance, leave **Skip OS shutdown unchecked**, Stop, and use Refresh instances until **Stopped**. Start that same instance and repeat section 4. The image, deploy key, helper classes and database history must survive. Run `verify-final`; require `FINAL_NOOP_PASS`. The script validates, runs a no-op update and compares history, indexes and fixture fingerprints before/after. It does not re-run the destructive parts of the cycle.
+
+Normal exit and handled termination clean the per-run workspace. Host failure or forced termination can bypass cleanup; inspect leftovers before any narrowly scoped removal. Never automatically clear checksums, delete history, release a database lock or drop data to make a failed check green.
+
+## 10. Stop, retain evidence and resume later
+
+1. Wait for every active Harness execution to finish. Check the cleanup marker above and the final database guard.
+2. Record exact commit, pipeline build/execution ID, PASS markers, image/JAR hashes and any expected failure. Use [validation-results.md](validation-results.md) as the acceptance ledger.
+3. Gracefully stop the same EC2 instance and refresh until Stopped. Closing a browser, disconnecting SSM or closing the phone does not stop EC2.
+4. Retain the encrypted EBS volume, active image, stopped backups, private repository and Atlas evidence. Stopped EBS still costs money; termination/volume deletion or a database reset is a separate deliberate cleanup decision and was not performed.
+5. For a later session, resume at section 4 and `verify-final`. A disconnected delegate while the instance is stopped is expected.
+
+The approved budget was $20/month before credits. The September 6 picker showed $0.09576/hour compute; public IPv4 was $0.005/hour and 30 GiB gp3 approximately $2.40/month. About 40 running hours plus a full month of that disk is $6.43 before credits, taxes, transfer and extras. Prices and billing totals need a fresh check when repeating later. The two-hour timer is a cost safeguard, not a budget enforcement service. [AWS IPv4 pricing](https://aws.amazon.com/vpc/pricing/) · [EBS pricing](https://aws.amazon.com/ebs/pricing/).
+
+## 11. Troubleshooting by observed symptom
+
+| Symptom | Check and resolution |
 |---|---|
-| Instance | One `mongodb-lab-delegate`, `m7i-flex.large`, Linux x86_64, 2 vCPU / 8 GiB |
-| AMI | Current supported Amazon Linux 2023 x86_64 image; record actual AMI and owner instead of blindly reusing the old ID |
-| Network | Verified public subnet in existing default VPC; automatically assigned public IPv4 |
-| Security group | New lab-only group, zero inbound rules; outbound access for SSM, Harness, GitHub/software sources, DNS, and Atlas |
-| Storage | 30 GiB encrypted gp3, baseline 3,000 IOPS / 125 MiB/s; record encryption key and delete-on-termination setting |
-| Administration | Session Manager, no SSH key pair or inbound SSH |
-| Instance role | `mongodb-lab-ec2-ssm`, EC2 trust, only `AmazonSSMManagedInstanceCore` |
-| Metadata | IMDSv2 required, hop limit 1; migration container has no planned need for AWS role credentials |
-| OS shutdown behavior | Stop, verified explicitly |
-| Tags | Name, project, owner, and agreed cleanup date |
+| Harness `MongoSecurityException` | Match the Atlas database-user password to Harness `atlas_password`; check admin auth database and Cluster0 user scope; rerun read-only connectivity first |
+| `collMod` denied, error 8000 | Use the tested validator setting in section 7; retain unique history-index adjustment; do not grant admin as a shortcut |
+| `Unknown type: ...MongoshStatement` | Require `runWith: mongosh` and patched runtime; inspect history first; do not edit an already executed changeset |
+| Changelog “does not exist” | Use a correct resource search path and relative changelog name; a missing-file error is not YAML validation evidence |
+| `LAB_BUSY`, exit 75 | Another run owns the target lock; let it finish, inspect outcome and retry only if appropriate |
+| Phase guard fails | Inspect actual history, indexes and fixtures. Use the required starting phase/revision; don't reset metadata |
+| Delegate unavailable after stop | Start the same EC2, verify timer/Docker/health and Connected; check its renewed public IP if network rules are restricted |
+| Java source launch fails in container | It has a JRE. Compile helpers using the EC2 host JDK and the supplied installation scripts |
+| Probe class missing after container replacement | Reinstall all helper classes; they are copied into the container, not baked into the image |
+| Permission denied when redirecting host build output | Put redirection inside `sudo bash -c '...'` or use a writable `/tmp` log; outer-shell redirection is not elevated |
+| AWS details appear stale | Use the actual Refresh instances control; navigating to the same URL may preserve cached state |
+| User cannot see password form | Open a visible side-browser tab and identify Secret Value and Save; do not assume a hidden tab is visible |
+| Native build probe fails on master count | Build from the recorded 001-only revision; RuntimeProbe expects one master changeset at build time |
 
-The live EC2 picker confirmed compute at $0.09576/hour on September 6. Console Home showed $100 credits and $0 month-to-date spend; billing can update later. Public IPv4 is currently $0.005/hour. Using the handoff's $2.40 for a full month of 30 GiB gp3, a conservative worksheet is:
+## 12. Scope and limits of the evidence
 
-| Running hours | Compute + IPv4 + full month of disk |
-|---:|---:|
-| 40 | $6.43 |
-| 100 | $12.48 |
-| 168 (continuous week) | $19.33 |
-
-These are estimates before credits, taxes, transfer, and extras; compute was verified in the account picker, and storage/IP rates were checked against AWS public pricing. Storage continues while the instance is stopped and is prorated when released earlier. A continuous week leaves little room under a $20 ceiling. Reconfirm the earlier $10–20 budget as part of the actual launch review. [AWS public IPv4 pricing](https://aws.amazon.com/vpc/pricing/), [EBS billing and baseline performance](https://aws.amazon.com/ebs/pricing/).
-
-**Pass:** actual price, available instance type, credit applicability, and final settings are recorded. The user has a concrete launch summary before any billable resource is submitted.
-
-### Step 4 — Create the approved role and execution host
-
-**Where:** AWS console. **Lead:** assistant; user handles required action-time confirmation.
-
-1. If the role is absent, prepare IAM → Roles → Create role → AWS service → EC2. Select only `AmazonSSMManagedInstanceCore`, then set the agreed role name and inspect its trust and permissions.
-2. At the final action, obtain any required confirmation for creating management access. The browser tool's current policy requires action-time confirmation for materially expanding security-sensitive access; the historical handoff is not that confirmation.
-3. Create and attach the reviewed instance profile. Recheck the launch summary from Step 3, then launch only under the current execution authorization and budget.
-4. Record instance ID, subnet, security group, root volume, role/profile, public IP, AMI, and launch time.
-5. Open EC2 → instance → Connect → Session Manager. Verify the host identity and session access. The role supplies host SSM permissions; the signed-in administrator separately needs permission to start sessions. [AWS Session Manager](https://docs.aws.amazon.com/systems-manager/latest/userguide/session-manager.html).
-6. Establish a local shutdown safeguard independent of the assistant connection before leaving the host unattended. Recommended implementation: a boot-armed systemd timer with an agreed maximum session duration, a visible deadline, and a procedure to extend it before long work. Prevent new runs near the deadline and drain active work before planned shutdown. Test the timer; document that an OS shutdown timer is not an absolute protection against host failure.
-7. Verify instance-initiated shutdown means **stop**, and test it before real migration work. Record that EBS persists and compute has reached Stopped in the AWS console. [AWS shutdown behavior](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_ChangingInstanceInitiatedShutdownBehavior.html).
-
-**Pass:** Session Manager works, inbound rules remain empty, storage is encrypted, and the tested shutdown mechanism stops the host. The timer installation script in `infra/aws/user-data.sh` ran successfully. A 45-second runtime override triggered a real EC2 stop; restart restored SSM and the two-hour timer. See the console checkpoint for the exact test and evidence.
-
-### Step 5 — Build the migration runtime on EC2
-
-**Where:** EC2 through Session Manager. **Lead:** assistant.
-
-1. Install Docker Engine using the supported Amazon Linux package path verified for the selected AMI. Enable its service, verify it starts, and configure bounded logs. Record exact package versions and commands in `host-bootstrap.sh`.
-2. Select the supported Harness Docker delegate image offered by the account. Resolve and record a tag and digest. Build on EC2 for Linux x86_64; do not accidentally publish an Apple Silicon image from the mini.
-3. Build a custom image containing Bash, Git, CA certificates, required utilities, the migration Java runtime, Liquibase, exactly one MongoDB extension, its resolved dependencies, and mongosh. Preserve the Java requirements and startup behavior of the delegate itself; scope any separate Java setting to the migration command.
-4. Inspect the selected release's dependency metadata, license, and native executor. Record sources and checksums. Do not mix the upstream MongoDB extension JAR with the Harness fork. Candidate Liquibase `4.33.0` / fork `1.0.0-4.33.0` remains provisional until tested.
-5. Keep the registration token out of the image, Dockerfile, repository, chat, and logs. Provision it using a reviewed protected bootstrap mechanism. New credentials or their transfer to another service may need a user handover or specific confirmation through the browser.
-6. Register the delegate with selector `mongodb-lab`, enable a restart policy, and verify explicit control of custom-image upgrades. Avoid privileged containers and Docker-socket mounting unless a demonstrated requirement changes the design.
-7. Execute the saved runtime-check through Harness. Its expected result is the presence and versions of `git`, `java`, `liquibase`, and `mongosh` **inside the delegate**, then a successful step. That step does not test Atlas or the extension's change types.
-8. Add a separate extension-load check and record the actual runtime location, user, versions, and image digest. Restart the container and repeat the check.
-
-**Pass:** the Harness-triggered checks succeed on the intended container, with a reproducible image recipe and safe token handling. Installed tools on the host alone do not pass this step.
-
-### Step 6 — Configure Atlas access and Harness secrets
-
-**Where:** Atlas and Harness consoles, then the delegate runtime. **Lead:** assistant, with user credential actions as required.
-
-1. Reuse the existing Free cluster. Confirm the target name is exactly `liquibase_lab` and that its contents are safe for this exercise.
-2. Prepare a dedicated Atlas database user with `readWrite` on that database. Test whether the actual changes and Liquibase tracking require additional rights; widen only for a demonstrated need. The user completes credential creation/change UI when required by browser policy.
-3. Add the current EC2 public IPv4 as a single `/32` entry. “Add current IP” in your local browser would normally select the mini's internet address, so enter the verified EC2 address explicitly. Do not use its private address or Tailscale address. [Atlas IP access lists](https://www.mongodb.com/docs/atlas/security/ip-access-list/).
-4. Create project-scoped Harness secrets for the chosen Atlas authentication method and separate read-only repository authentication. Keep credential-free endpoint/database settings as ordinary configuration where supported. Record secret identifiers only.
-5. Inject values through supported step environment/secret inputs. Disable command tracing and avoid embedding passwords or expanded URIs into script source, command arguments, or summaries. If the selected executor requires another mechanism, review and test it before proceeding; do not assume an environment variable reaches its child process.
-6. From the real delegate runtime, test SRV/TXT DNS, TLS, the Atlas endpoint/port requirements, authenticated ping, and a safe read. Exercise both the Liquibase connection and the mongosh path required for native changes.
-7. Verify the expected tracking collections and indexes can be created in the lab database during the controlled first update.
-
-**Pass:** authenticated runtime connectivity works and logs contain no credentials. Atlas Free does not provide managed backups or private endpoints; this remains a disposable-data lab. [Atlas Free limitations](https://www.mongodb.com/docs/atlas/reference/free-shared-limitations/).
-
-### Step 7 — Implement the migration contract and pipeline
-
-**Where:** local repository and Harness; execution on EC2. **Lead:** assistant.
-
-1. Define explicit, ordered changesets with stable IDs, authors, and paths. Keep applied changes immutable.
-2. Use a small collection such as `lab_items`, a named index, and deterministic synthetic IDs. Include an actual Harness-fork `mongoFile` example. Give every tested reversal a precise scope; use seed-record deletion or a named-index removal for the first rollback exercise.
-3. Split the rollout into commits so the first migration and later incremental migration can be proven independently. Do not include all later changes before the initial-repeat test.
-4. Export and adapt the account-valid Custom stage/Shell Script configuration. Keep the runtime-check pipeline as a diagnostic. Create the migration pipeline with manual execution only.
-5. Accept a validated revision; resolve it to an exact commit SHA. Use a safe Git checkout without credentials in the remote URL or printed command. The existence of a GitHub connector does not itself prove that a Shell Script step checks out the code.
-6. In `run-lab.sh`, acquire a target-wide lock shared across its unique workspaces, create an isolated temporary directory, check out the recorded SHA, load runtime configuration, and enforce a fixed database guard. Allow only defined actions.
-7. Run preflight, supported Liquibase `validate`, `status`, and `update`, then database assertions and a sanitized summary. Preserve failure exit codes. Always clean temporary credentials and workspaces. Retain non-secret evidence outside the removed workspace.
-8. Do not let untrusted pull-request code execute with deployment secrets. For the lab, run only reviewed commits from the trusted repository. Keep migration credentials scoped to the lab database.
-9. Verify the concurrency limit actually covers two attempts against this database. A selector tag alone does not serialize runs. A host lock supplements, rather than replaces, Liquibase's database lock.
-
-**Pass:** a manual Harness run at a recorded commit applies the intended change, reports failure correctly when needed, and verifies the target state. Exact changelog syntax and CLI flags enter the verified runbook only after release-specific testing.
-
-### Step 8 — Complete the acceptance evidence
-
-**Where:** Harness execution history, Atlas lab database, repository. **Lead:** assistant.
-
-| Test | Procedure and required evidence |
-|---|---|
-| First update | Run commit A. Verify intended collection/index/data plus Liquibase tracking; show only the lab database changed |
-| Same-commit repeat | Rerun A. Show no new changesets and unchanged deterministic counts/indexes |
-| Incremental update | Add a new changeset in commit B. Show only the additional change applies |
-| Native executor | Apply the scoped `mongoFile` change through the fork; verify its expected result |
-| Missing tool | Use a controlled preflight fixture; show a clear failure before database mutation |
-| Validation failure | Use a disposable test branch with invalid changelog structure; show validation blocks update |
-| Authentication failure | Use an isolated deliberately invalid test input, not rotation of the real secret; show failure without disclosure or database mutation |
-| Migration failure | Use a deliberately failing, non-destructive test operation against synthetic data; inspect database and tracking state, then document forward recovery |
-| Rollback | Reverse one explicitly reversible change, verify database and tracking, then reapply as supported |
-| Concurrency | Start two controlled attempts; demonstrate queueing/rejection or serialized mutation and no duplicate effects |
-| Restart recovery | Stop/start EC2, update Atlas access, verify delegate recovery, rerun B as a no-op |
-| Rebuild | Rebuild the image from its recorded recipe/artifacts and repeat runtime and migration checks |
-
-Record each result as PASS, FAIL, or NOT RUN, with date, commit SHA, image/version reference, Harness run link, and sanitized observations. A pipeline success badge alone is insufficient evidence of correct data.
-
-MongoDB changes can partially succeed before an error. Before any retry, inspect data and tracking. Do not clear checksums, delete tracking collections, or release locks as routine repairs. Release a stale lock only after establishing that no migration is still running. The final lab should teach forward correction as well as the limits of rollback.
-
-### Step 9 — Daily start, stop, and remote recovery
-
-**Start:** open this task → review saved status → start the existing EC2 if stopped → wait for status checks and SSM → obtain current public IP → update the lab's Atlas `/32` if changed → remove only the obsolete lab entry once appropriate → wait for the rule to apply → verify delegate and runtime → check shutdown deadline → run a connectivity check → proceed at a known commit.
-
-**Stop:** stop launching runs → wait for active migration completion and verify final state → save sanitized evidence and repository work → stop EC2 gracefully → confirm **Stopped** in AWS → record next step. Keep the mini available for Remote.
-
-**Lost phone connection:** reconnect to the same task and inspect the existing Harness execution before starting another. A dispatched pipeline may have continued. Check for a running process or lock before retrying.
-
-**Browser or permission issue:** assistant reports the exact page/action; user screen-shares into the mini; assistant pauses browser interaction during the handover and refreshes state afterward. If a tool is blocked, preserve work and report the blocker; do not repeatedly retry unchanged operations.
-
-**Mac restart:** restore the intended desktop session, network, app, and browser access. Verify remotely before relying on it again; Tailscale reachability alone is insufficient.
-
-### Step 10 — Produce the verified replication edition
-
-**Where:** repository documentation. **Lead:** assistant, then user replay.
-
-1. Replace provisional commands and version choices with tested ones; retain clearly marked alternatives only where they are useful.
-2. Record the initial state required by each exercise and expected counts/index names/tracking results. Make examples fully credential-free with explicit placeholders.
-3. Include the exported pipeline, image recipe and artifact digests, bootstrap script, safe credential-entry procedure, rollback limitations, troubleshooting, and cleanup inventory.
-4. Walk through the documented path against a fresh lab database state and a rebuilt runtime. Record where a fresh EC2 or fresh-account replay was not performed rather than implying it was.
-5. Publish reviewed changes and verify the remote commit. Use a release marker for the completed lab if desired. Preserve the resource map privately and avoid embedding account-specific identifiers into general examples.
-6. Have you perform a guided replay from the runbook. Capture any missing explanation or hidden prerequisite and repair it before closing the lab.
-
-**Pass:** a second operator can follow the documented steps, identify where each command runs, and reproduce the tested outcomes without reconstructing chat history.
-
-### Step 11 — Cleanup when you finish
-
-**Where:** the four service consoles. **Lead:** assistant prepares exact resource list; user supplies any required destructive-action confirmation.
-
-1. Save required repository files, run links, and sanitized evidence. Disable triggers and prevent new runs.
-2. Remove the lab delegate and revoke its registration token using the applicable Harness workflow. Revoke lab-only repository credentials and remove unneeded lab secrets.
-3. Terminate only the verified lab EC2 when requested. Verify the root volume's fate; inspect remaining lab volumes, snapshots, and any allocated IPs. Stopping alone is not full teardown.
-4. Remove only unused lab-created security groups and IAM role/profile. Do not delete the shared default VPC or shared networking.
-5. Remove the disposable Atlas lab database, dedicated user, and lab IP entry as requested. Preserve a shared cluster and unrelated data.
-6. Recheck the tagged AWS inventory and later billing records, allowing for billing delay. Record any retained paid resources explicitly.
-
-## 6. Troubleshooting order
-
-| Symptom | First checks |
-|---|---|
-| Phone cannot reach task | Correct host/account/workspace; mini awake and online; desktop app running; pairing |
-| Browser inaccessible | Browser is on the mini; correct profile; accessible extension/in-app surface; login not expired |
-| SSM cannot connect | Instance state, instance profile, agent, outbound network, and operator permissions; do not open SSH as the first workaround |
-| Harness waits for delegate | Host/Docker running, registration, selector, connectivity, and task availability |
-| Tools missing only in Harness | Actual container, PATH, execution user, image digest, and auto-upgrade behavior |
-| Atlas timeout after restart | EC2 public IP versus Atlas entry, rule propagation, DNS, TLS and endpoint ports |
-| Liquibase works, mongoFile fails | mongosh version/path, native executor loading, auth handoff, selected release compatibility |
-| Migration failed after writing | Exact commit, partial data effects, tracking state, active processes/locks; design forward correction |
-| Work appears lost in next step | Per-step working directory and delegate placement; use the single orchestration script |
-| Git publication blocked remotely | Preserve local work, identify exact permission/authentication failure, complete required user action once |
-
-## 7. Immediate next checkpoint
-
-Correct the saved Atlas password in Harness, then rerun the existing read-only connectivity pipeline with normal preflight. User/secret creation, delegate registration, and read-only Git access are already approved and verified; no repeated approval is needed. The separate native image passes Linux/container checks but is not promoted. Real authenticated access, migrations, repeat, rollback, failure and concurrency remain pending. Keep 003 inactive until the tested native image is active and live acceptance succeeds.
-
-The [first migration checkpoint](first-migration-checkpoint.md) now supplies the exact source commit, pipeline, installation procedure, state assertions and repeat/no-op sequence. It is prepared and syntax/compilation checked, with log-redaction checks and host installation complete; real migration acceptance is still pending. After the user's Atlas password update, connectivity Build 2 still failed, and the Harness secret update was requested.
-
-Use the [Linux runtime checkpoint](linux-runtime-checkpoint.md) for original image reproduction and the newer [Harness](harness-connection-checkpoint.md), [native](native-runtime-candidate.md), and [Atlas](atlas-connectivity-checkpoint.md) checkpoints for current verified state and exact next steps. The current boot's automatic stop deadline is 21:39:46 UTC / 5:39:46 PM Eastern on September 6; read a fresh deadline after any restart.
+The account's actual community-extension workflow passed the listed executions. This is not a production availability, disaster-recovery, load or penetration test. Native log/argument/script assertions cover the tested normal and negative paths, not every possible failure. Atlas's existing broad network rule was unchanged; managed backups were inactive. Only the restricted lab namespace was exercised; no cross-database before/after inventory was possible with the lab user. The Mac locked-screen remote workflow and a completely fresh-account rebuild remain unverified.

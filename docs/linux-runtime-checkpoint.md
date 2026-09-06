@@ -1,5 +1,7 @@
 # Linux runtime build and acceptance checkpoint
 
+> Historical checkpoint: this records an earlier phase, including its then-pending work and inputs. It is retained for diagnosis, not as the current run sequence. Atlas authentication, all three migration lessons, scoped rollbacks, invalid-YAML rejection, overlap exclusion and post-restart verification subsequently passed. Use [the current runbook](runbook.md) and [acceptance ledger](validation-results.md). EC2 was left Stopped.
+
 Verified September 6, 2026 on EC2 `i-0635332c43aa733a5`. After the build, the host was stopped and its disk/image retained. It was subsequently restarted and registered with Harness under explicit user approval; Build 1 of the runtime check passed. See [the latest connection checkpoint](harness-connection-checkpoint.md). No Atlas connection or migration has run.
 
 ## Exact runtime

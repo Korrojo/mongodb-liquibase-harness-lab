@@ -1,5 +1,7 @@
 # Atlas authenticated connectivity checkpoint
 
+> Historical checkpoint: this records an earlier phase, including its then-pending work and inputs. It is retained for diagnosis, not as the current run sequence. Atlas authentication, all three migration lessons, scoped rollbacks, invalid-YAML rejection, overlap exclusion and post-restart verification subsequently passed. Use [the current runbook](runbook.md) and [acceptance ledger](validation-results.md). EC2 was left Stopped.
+
 September 6, 2026: the first Harness read-only probe failed at authentication. No collection or document was created. The username, authentication database and cluster restriction were checked against the saved Atlas user; the saved password needs correction or confirmation.
 
 | Item | Verified value |

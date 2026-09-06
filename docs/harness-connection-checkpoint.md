@@ -1,5 +1,7 @@
 # Harness connection and desk handoff checkpoint
 
+> Historical checkpoint: this records an earlier phase, including its then-pending work and inputs. It is retained for diagnosis, not as the current run sequence. Atlas authentication, all three migration lessons, scoped rollbacks, invalid-YAML rejection, overlap exclusion and post-restart verification subsequently passed. Use [the current runbook](runbook.md) and [acceptance ledger](validation-results.md). EC2 was left Stopped.
+
 Verified September 6, 2026. The user explicitly approved connecting the EC2 delegate to Harness in chat; no additional desktop confirmation dialog was necessary for that approval.
 
 ## Completed
