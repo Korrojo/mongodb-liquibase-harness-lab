@@ -12,6 +12,16 @@ if docker container inspect mongodb-lab >/dev/null 2>&1; then
     exit 1
 fi
 LAB_IMAGE_ID=$(docker image inspect mongodb-lab-delegate:lab.1 --format '{{.Id}}')
+LAB_EXTRA_ARGS=()
+if test -n "${LAB_DELEGATE_HOSTNAME:-}"; then
+    LAB_EXTRA_ARGS+=(--hostname "$LAB_DELEGATE_HOSTNAME")
+fi
+# Set this only after the repository-specific read key has been approved.
+if test -n "${LAB_GIT_DIRECTORY:-}"; then
+    test "$(stat -c '%a:%u' "$LAB_GIT_DIRECTORY/id_ed25519")" = '600:1001'
+    test -f "$LAB_GIT_DIRECTORY/known_hosts"
+    LAB_EXTRA_ARGS+=(--mount "type=bind,src=$LAB_GIT_DIRECTORY,dst=/opt/mongodb-lab/git,readonly")
+fi
 docker run -d --name mongodb-lab --restart unless-stopped \
     --cpus=1 --memory=4g --stop-timeout=120 \
     --log-driver=json-file --log-opt max-size=10m --log-opt max-file=3 \
@@ -19,6 +29,7 @@ docker run -d --name mongodb-lab --restart unless-stopped \
     -e DELEGATE_NAME=mongodb-lab -e NEXT_GEN=true -e DELEGATE_TYPE=DOCKER \
     -e ACCOUNT_ID=7WPs0XUoT4CnMpX3j28V4g -e DELEGATE_TAGS=mongodb-lab \
     -e MANAGER_HOST_AND_PORT=https://app.harness.io \
+    "${LAB_EXTRA_ARGS[@]}" \
     "$LAB_IMAGE_ID"
 # No Docker socket, host ports, or automatic upgrader are attached.
 # Verify the delegate is Connected in the intended Harness project, then run the saved runtime pipeline.
