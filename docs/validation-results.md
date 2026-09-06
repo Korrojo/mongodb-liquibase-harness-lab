@@ -23,6 +23,7 @@ EC2 deployment and management/shutdown tests PASS. Container build/probe and a d
 | Atlas connectivity and credential handling | NOT RUN |
 | Initial/repeat/incremental migration | NOT RUN |
 | Native migration and rollback | NOT RUN |
+| Native security repair candidate on the mini | PASS locally: 62 focused tests, zero failures/errors, one existing skip; packaging and offline probe pass. Eight new security checks include real mongosh 2.9.2 failure. Candidate Linux/container/Atlas checks NOT RUN; see native-runtime-candidate.md |
 | Failure and concurrency checks | NOT RUN |
 | Stop/start and shutdown safeguard | PASS: actual timer expired using a 45-second runtime override; EC2 Stopped observed; same instance restarted, SSM reconnected, two-hour timer rearmed with no override |
 | GitHub publication | PASS: private repository, setup/lab-foundation pushed; GitHub helper configured only in this local repository |

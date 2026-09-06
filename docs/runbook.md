@@ -10,6 +10,8 @@ Execution progress, September 6: a local starter repository now exists in this t
 
 The [console replication checkpoint](aws-console-checkpoint.md) records the exact reviewed selections, current resource IDs, created IAM role, launched EC2 instance, and tested automatic stop safeguard. It supplements this full runbook as execution progresses.
 
+The [native runtime candidate checkpoint](native-runtime-candidate.md) records a subsequent local credential-handling repair, 62 focused tests (61 passed, one existing skipped), packaging, and the exact next Linux validation commands. That candidate is not in the stopped EC2 image. Atlas credentials, delegate registration, and live migration checks remain pending.
+
 ## 1. Feasibility and division of work
 
 The proposed arrangement is workable: the Mac mini manages the project, the phone directs the assistant, and the MacBook provides human access when needed. Keep the migration execution on EC2 and the database in Atlas.

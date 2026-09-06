@@ -1,0 +1,468 @@
+diff --git a/src/main/java/liquibase/ext/mongodb/tools/MongoshRunner.java b/src/main/java/liquibase/ext/mongodb/tools/MongoshRunner.java
+index f4bf380..8650443 100644
+--- a/src/main/java/liquibase/ext/mongodb/tools/MongoshRunner.java
++++ b/src/main/java/liquibase/ext/mongodb/tools/MongoshRunner.java
+@@ -36,6 +36,7 @@ import liquibase.servicelocator.LiquibaseService;
+ import liquibase.sql.Sql;
+ 
+ import java.io.BufferedWriter;
++import java.io.ByteArrayOutputStream;
+ import java.io.File;
+ import java.io.IOException;
+ import java.io.InputStream;
+@@ -43,11 +44,18 @@ import java.nio.file.Files;
+ import java.nio.file.Path;
+ import java.nio.file.Paths;
+ import java.nio.file.StandardOpenOption;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.attribute.PosixFilePermissions;
++import java.net.URLEncoder;
+ import java.util.ArrayList;
+ import java.util.List;
+ import java.util.Properties;
+ import java.util.ResourceBundle;
+ import java.util.concurrent.TimeoutException;
++import java.util.concurrent.TimeUnit;
++import java.util.concurrent.ExecutorService;
++import java.util.concurrent.Executors;
++import java.util.concurrent.Future;
+ 
+ @LiquibaseService(skip = true)
+ public class MongoshRunner extends ExecuteShellCommandChange {
+@@ -76,6 +84,9 @@ public class MongoshRunner extends ExecuteShellCommandChange {
+     private String logFile;
+     private Integer timeout;
+     private File mongoshExec;
++    private static final String CONNECTION_ENV = "LIQUIBASE_MONGOSH_CONNECTION_URI";
++    private String connectionUri;
++    private String connectionPassword;
+ 
+     public MongoshRunner() {
+     }
+@@ -89,6 +100,12 @@ public class MongoshRunner extends ExecuteShellCommandChange {
+     @Override
+     protected List<String> createFinalCommandArray(Database database) {
+         loadMongoshProperties();
++        // This lab build accepts only the two non-interactive output options.
++        // Connection/authentication options must come from the existing connection.
++        if (!getArgs().isEmpty() || args.stream().anyMatch(
++                arg -> !"--quiet".equals(arg) && !"--norc".equals(arg))) {
++            throw new UnexpectedLiquibaseException("Unsupported mongosh arguments in the lab runtime");
++        }
+         List<String> commandArray = super.createFinalCommandArray(database);
+ 
+         try {
+@@ -104,45 +121,67 @@ public class MongoshRunner extends ExecuteShellCommandChange {
+         if (sqlStrings != null) {
+             MongoLiquibaseDatabase mongoDatabase = (MongoLiquibaseDatabase) database;
+             MongoConnection connection = (MongoConnection) mongoDatabase.getConnection();
+-            commandArray.add(connection.getConnectionString().getConnectionString());
+-
+-            if (outFile != null) {
+-                commandArray.add("--file");
+-                commandArray.add(outFile.getAbsolutePath());
+-            } else {
+-                commandArray.add("--eval");
+-                commandArray.add(sqlStrings[0].toSql());
++            connectionUri = connection.getConnectionString().getConnectionString();
++            if (connection.getConnectionString().getCredential() != null
++                    && connection.getConnectionString().getCredential().getPassword() != null) {
++                connectionPassword = new String(connection.getConnectionString().getCredential().getPassword());
++            }
++            if (outFile == null) {
++                throw new UnexpectedLiquibaseException("A native changeset must contain a script");
+             }
++            commandArray.add("--nodb");
++            commandArray.add("--norc");
++            commandArray.add("--quiet");
++            commandArray.add("--file");
++            commandArray.add(outFile.getAbsolutePath());
+         } else {
+             commandArray.add("--version");
+         }
+ 
+         String commandLine = String.join(" ", commandArray);
+         Scope.getCurrentScope().getLog(getClass()).info(
+-                "mongosh command:\n" + commandLine.replaceAll("://.*:.*@", "://<credentials>@"));
++                "mongosh command:\n" + commandLine);
+         return commandArray;
+     }
+ 
++    @Override
++    protected ProcessBuilder createProcessBuilder(Database database) {
++        ProcessBuilder builder = super.createProcessBuilder(database);
++        if (connectionUri != null) {
++            builder.environment().put(CONNECTION_ENV, connectionUri);
++        } else {
++            builder.environment().remove(CONNECTION_ENV);
++        }
++        return builder;
++    }
++
+     public void executeCommand(Database database) throws Exception {
++        Process process = null;
++        ExecutorService outputReader = Executors.newSingleThreadExecutor(task -> {
++            Thread thread = new Thread(task, "mongosh-output-reader");
++            thread.setDaemon(true);
++            return thread;
++        });
+         try {
+             this.finalCommandArray = this.createFinalCommandArray(database);
+-            super.executeCommand(database);
+-        } catch (TimeoutException e) {
+-            try {
+-                Thread.sleep(10000L);
+-            } catch (InterruptedException interruptedException) {
+-                Thread.currentThread().interrupt();
++            // Core logs child output before processResult. Capture it here so
++            // both successful and failed output are redacted before any logger.
++            process = createProcessBuilder(database).start();
++            final InputStream childOutput = process.getInputStream();
++            Future<String> captured = outputReader.submit(() -> captureOutput(childOutput));
++            long timeoutMillis = getTimeoutInMillis();
++            if (timeoutMillis > 0 && !process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS)) {
++                throw new TimeoutException("mongosh exceeded its configured execution timeout");
+             }
+-
+-            this.processResult(0, null, null, database);
+-            String message = e.getMessage() + System.lineSeparator()
+-                    + "Error: The mongosh executable failed to return a response with the configured timeout. "
+-                    + "Please check liquibase.mongosh.timeout specified in liquibase.mongosh.conf file, "
+-                    + "the LIQUIBASE_MONGOSH_TIMEOUT environment variable, or other config locations. "
+-                    + System.lineSeparator();
+-            Scope.getCurrentScope().getUI().sendMessage("WARNING: " + message);
+-            Scope.getCurrentScope().getLog(MongoshRunner.class).warning(message);
++            int returnCode = process.waitFor();
++            String result = redact(captured.get(5, TimeUnit.SECONDS));
++            Scope.getCurrentScope().getLog(getClass()).info(result);
++            processResult(returnCode, null, result, database);
++        } catch (TimeoutException e) {
+             throw new LiquibaseException(e);
++        } catch (InterruptedException e) {
++            Thread.currentThread().interrupt();
++            throw new LiquibaseException("mongosh execution interrupted", e);
+         } catch (IOException e) {
+             if (e.getMessage() != null && e.getMessage().contains("mongosh")) {
+                 throw new LiquibaseException(MSG_UNABLE_TO_RUN_MONGOSH, e);
+@@ -151,15 +190,61 @@ public class MongoshRunner extends ExecuteShellCommandChange {
+         } catch (Exception e) {
+             throw new LiquibaseException(e);
+         } finally {
++            if (process != null && process.isAlive()) {
++                process.destroyForcibly();
++            }
++            outputReader.shutdownNow();
+             if (outFile != null && outFile.exists() && Boolean.TRUE.equals(keepTempFile)) {
+                 Scope.getCurrentScope().getLog(getClass()).info(
+                         "Mongosh run script can be located at: " + outFile.getAbsolutePath());
++            } else if (outFile != null) {
++                Files.deleteIfExists(outFile.toPath());
++            }
++            connectionUri = null;
++            connectionPassword = null;
++        }
++    }
++
++    private String captureOutput(InputStream input) throws IOException {
++        try (InputStream stream = input; ByteArrayOutputStream captured = new ByteArrayOutputStream()) {
++            byte[] bytes = new byte[4096];
++            boolean overflow = false;
++            int count;
++            while ((count = stream.read(bytes)) != -1) {
++                if (!overflow && captured.size() + count <= 1024 * 1024) {
++                    captured.write(bytes, 0, count);
++                } else {
++                    overflow = true;
++                    captured.reset();
++                }
+             }
++            // Suppress the entire oversized output: truncating through a secret
++            // could otherwise leave a fragment that exact redaction cannot match.
++            return overflow ? "mongosh output exceeded 1 MiB; output suppressed"
++                    : captured.toString(StandardCharsets.UTF_8.name());
+         }
+     }
+ 
++    private String redact(String value) {
++        if (value == null) {
++            return null;
++        }
++        String result = connectionUri == null ? value : value.replace(connectionUri, "<mongodb connection>");
++        if (connectionPassword != null && !connectionPassword.isEmpty()) {
++            result = result.replace(connectionPassword, "<password>");
++            try {
++                result = result.replace(URLEncoder.encode(connectionPassword, "UTF-8"), "<password>");
++            } catch (java.io.UnsupportedEncodingException impossible) {
++                throw new IllegalStateException(impossible);
++            }
++        }
++        return result;
++    }
++
+     @Override
+     protected void processResult(int returnCode, String errorStreamOut, String infoStreamOut, Database database) {
++        errorStreamOut = redact(errorStreamOut);
++        infoStreamOut = redact(infoStreamOut);
+         if (logFile != null && outFile != null) {
+             try {
+                 if (hasText(infoStreamOut)) {
+@@ -187,28 +272,27 @@ public class MongoshRunner extends ExecuteShellCommandChange {
+             Logger log = Scope.getCurrentScope().getLog(getClass());
+             log.info("Creating the mongosh run script");
+ 
+-            MongoshFileCreator mongoshFileCreator = new MongoshFileCreator(
+-                    changeSet,
+-                    tempName,
+-                    tempPath,
+-                    true,
+-                    keepTempFile == null
+-                            ? Boolean.TRUE.equals(MongoConfiguration.MONGOSH_TEMP_KEEP.getCurrentValue())
+-                            : keepTempFile);
+-            try {
+-                outFile = mongoshFileCreator.generateTemporaryFile(".txt");
+-            } catch (IOException e) {
+-                throw new UnexpectedLiquibaseException(e);
++            // Atomic, unpredictable, owner-only files on the POSIX lab runtime.
++            // Configured fixed filenames are deliberately not reused.
++            Path directory = Paths.get(tempPath == null ? System.getProperty("java.io.tmpdir") : tempPath);
++            Path path = Files.createTempFile(directory, "liquibase-mongosh-", ".js",
++                    PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
++            outFile = path.toFile();
++            if (!Boolean.TRUE.equals(keepTempFile)) {
++                outFile.deleteOnExit();
+             }
+-
+-            Path path = Paths.get(outFile.getAbsolutePath());
+             try (BufferedWriter writer = Files.newBufferedWriter(path)) {
++                writer.write("try {\n"
++                        + "  if (!process.env." + CONNECTION_ENV + ") throw new Error('Missing native connection');\n"
++                        + "  db = connect(process.env." + CONNECTION_ENV + ");\n"
++                        + "} catch (_) { throw new Error('Native MongoDB connection failed'); }\n"
++                        + "finally { delete process.env." + CONNECTION_ENV + "; }\n");
+                 for (Sql sql : sqlStrings) {
+                     String line = sql.toSql();
+                     line = line.replace("\r", "");
+                     writer.write(line);
++                    writer.write(";\n");
+                 }
+-                writer.write(";\n");
+             }
+         }
+     }
+@@ -339,8 +423,6 @@ public class MongoshRunner extends ExecuteShellCommandChange {
+     private void handleArgs(String argsString) {
+         if (argsString != null) {
+             argsString = argsString.trim();
+-            Scope.getCurrentScope().getLog(getClass()).info(
+-                    "Executing 'mongosh' with extra arguments of '" + argsString + "'");
+             args = splitAndTrim(argsString);
+         }
+     }
+diff --git a/src/test/java/liquibase/ext/mongodb/tools/MongoshRunnerSecurityTest.java b/src/test/java/liquibase/ext/mongodb/tools/MongoshRunnerSecurityTest.java
+new file mode 100644
+index 0000000..f7b9a54
+--- /dev/null
++++ b/src/test/java/liquibase/ext/mongodb/tools/MongoshRunnerSecurityTest.java
+@@ -0,0 +1,202 @@
++package liquibase.ext.mongodb.tools;
++
++import com.mongodb.ConnectionString;
++import liquibase.Scope;
++import liquibase.changelog.ChangeSet;
++import liquibase.database.Database;
++import liquibase.ext.mongodb.database.MongoConnection;
++import liquibase.ext.mongodb.database.MongoLiquibaseDatabase;
++import liquibase.logging.LogService;
++import liquibase.logging.Logger;
++import liquibase.sql.Sql;
++import liquibase.sql.UnparsedSql;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.io.TempDir;
++
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.nio.file.Paths;
++import java.nio.file.attribute.PosixFilePermissions;
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.List;
++import java.util.Properties;
++
++import static org.junit.jupiter.api.Assertions.*;
++import static org.junit.jupiter.api.Assumptions.assumeTrue;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.Mockito.*;
++
++class MongoshRunnerSecurityTest {
++    private static final String PASSWORD = "LAB_NATIVE_CANARY@+!916";
++    private static final String ENCODED_PASSWORD = "LAB_NATIVE_CANARY%40%2B%21916";
++    private static final String URI = "mongodb://offline_user:" + ENCODED_PASSWORD
++            + "@127.0.0.1:1/liquibase_lab?serverSelectionTimeoutMS=500&connectTimeoutMS=500";
++    private static final String CONNECTION_ENV = "LIQUIBASE_MONGOSH_CONNECTION_URI";
++
++    @TempDir
++    Path directory;
++
++    private MongoLiquibaseDatabase database() {
++        MongoConnection connection = new MongoConnection();
++        connection.setConnectionString(new ConnectionString(URI));
++        MongoLiquibaseDatabase database = mock(MongoLiquibaseDatabase.class);
++        when(database.getConnection()).thenReturn(connection);
++        return database;
++    }
++
++    private Path executable(String body) throws Exception {
++        Path file = Files.createTempFile(directory, "fake-mongosh-", ".sh");
++        Files.write(file, body.getBytes(StandardCharsets.UTF_8));
++        Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rwx------"));
++        return file;
++    }
++
++    private class ObservedRunner extends MongoshRunner {
++        final Path executable;
++        Path script;
++        boolean environmentChecked;
++        long limit = 10000;
++        Path outputLog;
++
++        ObservedRunner(Path executable) {
++            super(mock(ChangeSet.class), new Sql[]{new UnparsedSql("print('SCRIPT_EXECUTED')")});
++            this.executable = executable;
++        }
++
++        @Override
++        public Properties getPropertiesFromConf(String ignored) {
++            Properties properties = new Properties();
++            properties.setProperty("liquibase.mongosh.path", executable.toString());
++            if (outputLog != null) properties.setProperty("liquibase.mongosh.logFile", outputLog.toString());
++            return properties;
++        }
++
++        @Override
++        protected long getTimeoutInMillis() {
++            return limit;
++        }
++
++        @Override
++        protected ProcessBuilder createProcessBuilder(Database database) {
++            ProcessBuilder builder = super.createProcessBuilder(database);
++            assertEquals(URI, builder.environment().get(CONNECTION_ENV));
++            assertClean(String.join(" ", builder.command()));
++            assertTrue(builder.command().contains("--nodb"));
++            script = Paths.get(builder.command().get(builder.command().indexOf("--file") + 1));
++            try {
++                assertEquals(PosixFilePermissions.fromString("rw-------"), Files.getPosixFilePermissions(script));
++                String contents = new String(Files.readAllBytes(script), StandardCharsets.UTF_8);
++                assertClean(contents);
++                assertTrue(contents.contains("delete process.env." + CONNECTION_ENV));
++                assertTrue(contents.indexOf("connect(process.env.") < contents.indexOf("SCRIPT_EXECUTED"));
++            } catch (Exception e) {
++                throw new AssertionError(e);
++            }
++            environmentChecked = true;
++            return builder;
++        }
++    }
++
++    private static void assertClean(String text) {
++        assertFalse(text.contains(PASSWORD), "Raw password must not be exposed");
++        assertFalse(text.contains(ENCODED_PASSWORD), "Encoded password must not be exposed");
++        assertFalse(text.contains(URI), "Connection URI must not be exposed");
++    }
++
++    private List<String> runWithCapturedLogs(ObservedRunner runner, boolean failure) throws Exception {
++        List<String> messages = new ArrayList<>();
++        Logger logger = mock(Logger.class, invocation -> {
++            for (Object arg : invocation.getArguments()) {
++                if (arg instanceof String) messages.add((String) arg);
++            }
++            return RETURNS_DEFAULTS.answer(invocation);
++        });
++        LogService service = mock(LogService.class);
++        when(service.getLog(any())).thenReturn(logger);
++        Scope.child(Collections.singletonMap(Scope.Attr.logService.name(), service), () -> {
++            if (failure) {
++                Exception exception = assertThrows(Exception.class, () -> runner.executeCommand(database()));
++                for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
++                    assertClean(String.valueOf(cause.getMessage()));
++                }
++            } else {
++                runner.executeCommand(database());
++            }
++        });
++        assertTrue(runner.environmentChecked);
++        assertNotNull(runner.script);
++        assertFalse(Files.exists(runner.script), "Temporary script must be removed immediately");
++        messages.forEach(MongoshRunnerSecurityTest::assertClean);
++        return messages;
++    }
++
++    @Test
++    void successDoesNotExposeCredentialsInArgumentsFilesOrLogs() throws Exception {
++        Path fake = executable("#!/bin/sh\nprintf '%s\\n' \"$LIQUIBASE_MONGOSH_CONNECTION_URI\"\n"
++                + "printf '%s\\n' '" + PASSWORD + "' '" + ENCODED_PASSWORD + "'\nexit 0\n");
++        List<String> messages = runWithCapturedLogs(new ObservedRunner(fake), false);
++        assertTrue(String.join("\n", messages).contains("<mongodb connection>"));
++    }
++
++    @Test
++    void failedChildRedactsStdoutStderrAndException() throws Exception {
++        Path fake = executable("#!/bin/sh\nprintf '%s\\n' \"$LIQUIBASE_MONGOSH_CONNECTION_URI\"\n"
++                + "printf '%s\\n' '" + PASSWORD + "' >&2\nexit 17\n");
++        runWithCapturedLogs(new ObservedRunner(fake), true);
++    }
++
++    @Test
++    void configuredLogFileAlsoContainsOnlyRedactedOutput() throws Exception {
++        ObservedRunner runner = new ObservedRunner(executable("#!/bin/sh\n"
++                + "printf '%s\\n' \"$LIQUIBASE_MONGOSH_CONNECTION_URI\"\nexit 7\n"));
++        runner.outputLog = directory.resolve("native.log");
++        runWithCapturedLogs(runner, true);
++        String log = new String(Files.readAllBytes(runner.outputLog), StandardCharsets.UTF_8);
++        assertClean(log);
++        assertTrue(log.contains("<mongodb connection>"));
++    }
++
++    @Test
++    void oversizedOutputIsDrainedAndSuppressedWithoutPartialSecrets() throws Exception {
++        ObservedRunner runner = new ObservedRunner(executable("#!/bin/sh\n"
++                + "head -c 1100000 /dev/zero\n"
++                + "printf '%s\\n' \"$LIQUIBASE_MONGOSH_CONNECTION_URI\"\nexit 0\n"));
++        List<String> messages = runWithCapturedLogs(runner, false);
++        assertTrue(String.join("\n", messages).contains("output exceeded 1 MiB; output suppressed"));
++    }
++
++    @Test
++    void failedProcessStartStillRemovesScript() throws Exception {
++        runWithCapturedLogs(new ObservedRunner(executable("#!/nonexistent/lab-interpreter\n")), true);
++    }
++
++    @Test
++    void timeoutFailsAndRemovesScript() throws Exception {
++        ObservedRunner runner = new ObservedRunner(executable("#!/bin/sh\nexec sleep 30\n"));
++        runner.limit = 100;
++        long started = System.nanoTime();
++        runWithCapturedLogs(runner, true);
++        assertTrue(System.nanoTime() - started < 5_000_000_000L);
++    }
++
++    @Test
++    void rejectsCredentialArgumentsBeforeCreatingScript() throws Exception {
++        ObservedRunner runner = new ObservedRunner(executable("#!/bin/sh\nexit 0\n"));
++        runner.addArg("--password");
++        runner.addArg(PASSWORD);
++        Exception exception = assertThrows(Exception.class, () -> runner.executeCommand(database()));
++        assertClean(exception.toString());
++        assertNull(runner.script);
++    }
++
++    @Test
++    void actualMongoshConnectionFailureIsSafe() throws Exception {
++        String path = System.getProperty("lab.mongosh");
++        assumeTrue(path != null, "Set lab.mongosh to the actual executable for the native negative check");
++        List<String> messages = runWithCapturedLogs(new ObservedRunner(Paths.get(path)), true);
++        assertTrue(String.join("\n", messages).contains("Native MongoDB connection failed"));
++        assertFalse(String.join("\n", messages).contains("SCRIPT_EXECUTED"));
++    }
++}

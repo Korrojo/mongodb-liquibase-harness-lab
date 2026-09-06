@@ -51,6 +51,6 @@ The detailed planning runbook is currently in the parent task's `outputs/mongodb
 - The actual saved Harness runtime pipeline is exported in `.harness/runtime-check.yaml`; it has not run.
 - Sixteen candidate runtime libraries resolved successfully. A password-redaction defect was reproduced with synthetic data and repaired in a pinned source patch. See [the offline runtime checkpoint](docs/runtime-offline-checkpoint.md).
 - The Linux custom image is built and its tool checks, extension probe, and driver failure-redaction check pass. See [the Linux runtime checkpoint](docs/linux-runtime-checkpoint.md). Delegate registration and real Atlas validation remain pending.
-- Native-executor credential handling remains unfinished. Exercise 003 stays inactive.
+- A native-executor repair candidate passes 62 focused local tests (61 passed, one existing skip) and packaging. See [the candidate checkpoint](docs/native-runtime-candidate.md). It has not been deployed to EC2 or tested with Atlas; exercise 003 stays inactive.
 
 The full lab is not yet a tested installation recipe. Each unverified stage remains explicitly pending.
