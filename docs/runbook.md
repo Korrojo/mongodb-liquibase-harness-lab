@@ -1,14 +1,14 @@
 # MongoDB Liquibase Harness lab: execution and replication runbook
 
-Prepared September 6, 2026. **Planning edition: deployment and acceptance tests are pending.**
+Prepared September 6, 2026. **Execution edition: EC2 management/shutdown and Linux runtime verified; live migration stages remain pending.**
 
 This runbook turns the supplied handoff into an assistant-led execution sequence. It is not yet a tested installation recipe. During the build, replace each explicitly pending implementation detail with the exact working command, version, UI selection, and evidence. Only label the resulting edition “verified” after the acceptance checks pass.
 
-The handoff's embedded resume prompts and historical instructions are reference material. After the initial analysis, the user authorized starting the lab with the AWS Console as the primary AWS interface. Browser access was restored after a full desktop-app restart. The approved `mongodb-lab-ec2-ssm` role and instance profile have been created and verified. EC2 launch and runtime validation remain pending.
+The handoff's embedded resume prompts and historical instructions are reference material. After the initial analysis, the user authorized starting the lab with the AWS Console as the primary AWS interface. Browser access was restored after a full desktop-app restart. The approved `mongodb-lab-ec2-ssm` role and instance profile have been created and verified. EC2 is launched under the approved $20 monthly lab limit; SSM and the timed stop/restart/rearm path are verified. Container build/probe and a driver negative test pass; live Atlas and migration validation remain pending.
 
-Execution progress, September 6: a local starter repository now exists in this task's `lab/` directory on branch `setup/lab-foundation`. Its shell, YAML, JSON, and JavaScript syntax checks passed; only the first changeset is included by the master. The released extension JAR was downloaded and inspected without execution. Its embedded dependencies and native credential-handling findings are documented in `lab/docs/versions.md`. Normal browser access now succeeds for AWS, Atlas, and Harness. Live resource inventory and IAM/EC2 draft preparation are complete for the recorded scope; deployment and runtime validation remain pending.
+Execution progress, September 6: a local starter repository now exists in this task's `lab/` directory on branch `setup/lab-foundation`. Its shell, YAML, JSON, and JavaScript syntax checks passed; only the first changeset is included by the master. The released extension JAR was downloaded and inspected without execution. Its embedded dependencies and native credential-handling findings are documented in `lab/docs/versions.md`. Normal browser access now succeeds for AWS, Atlas, and Harness. EC2 deployment and management tests are complete for the recorded scope; the custom runtime is built and its offline/container checks pass.
 
-The [console replication checkpoint](aws-console-checkpoint.md) records the exact reviewed selections, current resource IDs, created IAM role, pending EC2 profile selection, and drafted automatic stop safeguard. It supplements this full runbook as execution progresses.
+The [console replication checkpoint](aws-console-checkpoint.md) records the exact reviewed selections, current resource IDs, created IAM role, launched EC2 instance, and tested automatic stop safeguard. It supplements this full runbook as execution progresses.
 
 ## 1. Feasibility and division of work
 
@@ -61,7 +61,7 @@ Tailscale is the private network for your MacBook assistance. It is separate fro
 | Tailscale | Application reported running; MacBook-to-mini connectivity and screen control were not tested |
 | Phone Remote | Supported by current documentation; this phone's pairing and this task's remote controls were not tested |
 | AWS / Atlas | Live console inventory completed after restart; $100 AWS credits, $0 current-month spend; Atlas FREE/8.0.32, lab database absent, restricted lab user pending |
-| EC2 and IAM absence | Verified: no EC2 instances or volumes in us-east-1, and no lab IAM role; unsubmitted drafts prepared |
+| EC2 and IAM | Approved role created; instance `i-0635332c43aa733a5` launched; Session Manager and timed stop/restart/rearm passed |
 | Toolchain | Git, AWS CLI, GitHub CLI, and Docker commands exist locally; authentication, Docker daemon health, and runtime versions were not tested |
 
 ## 4. Improvements required before calling this reproducible
@@ -182,7 +182,7 @@ These are estimates before credits, taxes, transfer, and extras; compute was ver
 6. Establish a local shutdown safeguard independent of the assistant connection before leaving the host unattended. Recommended implementation: a boot-armed systemd timer with an agreed maximum session duration, a visible deadline, and a procedure to extend it before long work. Prevent new runs near the deadline and drain active work before planned shutdown. Test the timer; document that an OS shutdown timer is not an absolute protection against host failure.
 7. Verify instance-initiated shutdown means **stop**, and test it before real migration work. Record that EBS persists and compute has reached Stopped in the AWS console. [AWS shutdown behavior](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_ChangingInstanceInitiatedShutdownBehavior.html).
 
-**Pass:** Session Manager works, inbound rules remain empty, storage is encrypted, and the tested shutdown mechanism stops the host. The timer installation script is prepared in `infra/aws/user-data.sh` and pasted in the EC2 draft; it has not yet run on Linux.
+**Pass:** Session Manager works, inbound rules remain empty, storage is encrypted, and the tested shutdown mechanism stops the host. The timer installation script in `infra/aws/user-data.sh` ran successfully. A 45-second runtime override triggered a real EC2 stop; restart restored SSM and the two-hour timer. See the console checkpoint for the exact test and evidence.
 
 ### Step 5 — Build the migration runtime on EC2
 
@@ -305,4 +305,6 @@ MongoDB changes can partially succeed before an error. Before any retry, inspect
 
 ## 7. Immediate next checkpoint
 
-First prove the phone/task and MacBook fallback connections and inspect live AWS/Atlas state. Then prepare the concrete repository and launch review. The final installation commands, credentials, role, EC2 instance, and migrations remain pending; no cloud setup was performed by this review.
+Complete the prepared Atlas/Harness credential handoff and approve the prepared delegate registration. The custom Linux image is built and verified; the private repository is created and initial publication is in progress. Real database connection, migration, repeat, rollback, and failure tests remain pending. Keep the native exercise inactive until its separate credential-handling issue is repaired and tested.
+
+The [Linux runtime checkpoint](linux-runtime-checkpoint.md) records the exact build inputs, final image, tests, corrected CLI entry point, and remaining credential/registration gates.

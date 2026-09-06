@@ -1,17 +1,17 @@
 # Runtime inventory and compatibility findings
 
-Inspected September 6, 2026. No runtime has been built or deployed.
+Inspected September 6, 2026. EC2 host tools and the pinned Harness base image are installed; custom image validation remains pending.
 
 | Component | Evidence | Status |
 |---|---|---|
-| EC2 OS/architecture | Launch form: Amazon Linux 2023 `2023.12.20260831.0`, kernel 6.18, x86_64, `ami-081b0a6eac00b4f53` | Draft only; not booted |
-| Harness base image | Live Docker installer: `us-docker.pkg.dev/gar-prod-setup/harness-public/harness/delegate:26.08.89804` | Tag verified in UI; digest and runtime validation pending |
+| EC2 OS/architecture | Launch form: Amazon Linux 2023 `2023.12.20260831.0`, kernel 6.18, x86_64, `ami-081b0a6eac00b4f53` | Booted; Session Manager and timed stop/restart verified |
+| Harness base image | Live Docker installer: `us-docker.pkg.dev/gar-prod-setup/harness-public/harness/delegate:26.08.89804` | Pulled on EC2: `sha256:20fe5d8149b973b0839350bee2ea61a7e57534c2ca3c260979e216e9b499109f`, linux/amd64, user 1001 |
 | Liquibase | 4.33.0 in embedded extension build metadata | Candidate, not integration-tested |
 | Harness extension | `io.harness:liquibase-mongodb-dbops-extension:1.0.0-4.33.0` downloaded from vendor repository | Archive and bytecode inspected; not executed |
 | MongoDB Java driver | Embedded metadata declares `mongodb-driver-sync:5.5.1` | Full resolved dependency set pending |
 | Jackson | Embedded metadata declares a `jackson-core.version` property of 2.15.3 | Effective inherited dependency versions still need resolution |
-| Migration Java | EC2 image version not selected | Mini has Temurin 17.0.20+8 arm64; this is not the EC2 runtime |
-| mongosh | Not selected | Linux package, checksum, and native behavior pending |
+| Migration Java | Base delegate has Temurin 17.0.19+10 at `/opt/java/openjdk` | Verified in an unregistered container; no Java replacement in the delegate |
+| mongosh | Selected official release 2.10.0, linux-x64 archive | GitHub release API SHA-256 `42034ba0fc9a48fd65ddcc5150b2e9d8a777965019220744baee42ee9669d543`; installation/native behavior pending |
 
 The downloaded release POM has coordinates only; it contains no dependency declarations. The JAR embeds an upstream-style POM with version `4.33.0.1-SNAPSHOT`, Liquibase 4.33.0, and MongoDB driver 5.5.1. Therefore the public artifact coordinate alone does not establish its source revision or resolved runtime dependencies. Verify the actual archive and pin its bytes; do not build from arbitrary `main` or copy the README's older dependency list.
 
@@ -49,3 +49,9 @@ Do not enable the native changeset until a version or reviewed implementation pa
 - The same probe FAILED its synthetic-password redaction assertion: the released extension returns the entire URI from `MongoConnection.getVisibleUrl()`. This establishes another credential issue independently of the native argv finding. No real database credentials were used. A source fix and offline unit tests are being prepared at pinned upstream commit `1d2e9bc199ec364fc4e1520fbde5cfaad7b3f021`.
 
 The first visible-URL source patch now passes the offline probe. The detailed reproduction and limits are recorded in [runtime-offline-checkpoint.md](runtime-offline-checkpoint.md). Native process-argument exposure remains a separate unresolved item.
+
+## EC2 host and image preparation
+
+Host: Docker 25.0.16, Git 2.50.1, x86_64; root disk had 28 GiB free after Docker install. Base image: Red Hat Enterprise Linux 9.8, user 1001 (`harness`), Java 17.0.19; git/curl/microdnf present, javac absent. The image was inspected using an overridden shell entry point and no network, without registration credentials.
+
+Build inputs: `infra/delegate/Dockerfile`, `prepare-on-ec2.sh`, and `liquibase`. These remain untested until the actual build completes. The wrapper retains the delegate Java path. Source packaging uses the pinned commit and visible-URL patch; the native credential issue remains unresolved.

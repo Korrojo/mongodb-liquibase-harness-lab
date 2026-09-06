@@ -1,14 +1,14 @@
 # Validation results
 
-Runtime/deployment tests are NOT RUN. The SSM role/profile is created and verified; EC2 remains an unsubmitted draft.
+EC2 deployment and management/shutdown tests PASS. Container build/probe and a driver negative test also pass. Database connection and migration validation remain pending.
 
 | Check | State |
 |---|---|
 | Shell/YAML/JSON/JavaScript syntax | PASS on September 6: Bash parser, Ruby Psych, Python JSON parser, and Node syntax checks |
 | Browser recovery and console inventory | PASS after user restarted the desktop app; AWS/Atlas/Harness accessible |
-| EC2 user-data Bash syntax | PASS; no Linux/cloud execution performed |
+| EC2 user-data Bash syntax | PASS; cloud-init deployed the units successfully on EC2 |
 | IAM role/profile | PASS: user-approved creation; console success and role/profile identifiers read back; one attached policy verified |
-| EC2 form | READY FOR LAUNCH CONFIRMATION: profile selected, full form and subnet ACL reviewed; $20 spending approval pending |
+| EC2 form | PASS: user approved $20 monthly lab limit; launched once and recorded instance/SG/volume IDs |
 | Access after Mac screen locks | NOT VERIFIED: current AWS browser access succeeds; Locked use support and installed authorization component found, enabled state unconfirmed |
 | Master includes only first exercise | PASS: exactly one include, `changes/001-create-collection.yaml` |
 | Published extension archive inspection | PASS: archive and native runner bytecode inspected |
@@ -16,11 +16,13 @@ Runtime/deployment tests are NOT RUN. The SSM role/profile is created and verifi
 | Candidate runtime dependency resolution | PASS: 16 JARs resolved; Liquibase 4.33.0 version command succeeds with Java 17.0.20 on the mini |
 | Published-artifact offline probe | PARTIAL: service discovery and three changelogs parse; synthetic-password assertion FAILS |
 | Visible-URL source repair | PASS: patched offline probe; focused suite ran 15 tests, zero failures/errors, one existing skipped test |
-| Linux image build | NOT RUN |
+| Linux image build | PASS: custom image built on EC2, Java 17/Liquibase 4.33.0/mongosh 2.10.0 verified as user 1001 |
+| Container extension probe | PASS: one provider, required change types, three parsed exercises, visible-URL redaction |
+| Driver failure logging | PASS after correcting the CLI entry point: expected loopback connection failure, exit 1, synthetic password absent from captured logs |
 | Harness runtime check | NOT RUN |
 | Atlas connectivity and credential handling | NOT RUN |
 | Initial/repeat/incremental migration | NOT RUN |
 | Native migration and rollback | NOT RUN |
 | Failure and concurrency checks | NOT RUN |
-| Stop/start and shutdown safeguard | NOT RUN |
+| Stop/start and shutdown safeguard | PASS: actual timer expired using a 45-second runtime override; EC2 Stopped observed; same instance restarted, SSM reconnected, two-hour timer rearmed with no override |
 | GitHub publication | NOT RUN |

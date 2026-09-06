@@ -1,0 +1,3 @@
+#!/bin/bash
+set -euo pipefail
+exec /opt/java/openjdk/bin/java -cp '/opt/mongodb-lab/lib/*' liquibase.integration.commandline.LiquibaseCommandLine "$@"

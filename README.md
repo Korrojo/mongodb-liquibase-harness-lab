@@ -1,6 +1,6 @@
 # MongoDB Liquibase Harness lab
 
-Status: local foundation prepared on September 6, 2026; no EC2 deployment, Atlas connection, or migration has been performed by this task. The local branch is `setup/lab-foundation`. GitHub publication is pending.
+Status: EC2 deployed on September 6, 2026; Session Manager, timed stop, restart, and two-hour rearm verified. Atlas connection and migrations remain unrun. The local branch is `setup/lab-foundation`. The private GitHub repository is created; initial branch publication is in progress.
 
 Architecture: private GitHub repository → Harness Custom stage/Shell Script → persistent Docker delegate on EC2 → Atlas `liquibase_lab`. The Mac mini is the management workstation.
 
@@ -46,10 +46,11 @@ The detailed planning runbook is currently in the parent task's `outputs/mongodb
 
 ## Current execution state
 
-- Browser access works again. The approved SSM role/profile is created and selected in the EC2 launch draft. Final network/configuration review is complete; the requested $20 monthly lab spending approval is pending. No EC2 instance has been launched.
-- GitHub CLI authentication was verified as Korrojo outside the restricted network environment. Private repository publication is still pending.
+- User approved the $20 monthly AWS lab limit. Instance `i-0635332c43aa733a5` is deployed with the approved SSM role. A 45-second test stopped the instance; restart restored remote access and the normal two-hour timer. See [the console checkpoint](docs/aws-console-checkpoint.md).
+- The expired GitHub CLI sign-in was renewed through the user’s browser authorization. Private repository: `Korrojo/mongodb-liquibase-harness-lab`; publish only the setup branch.
 - The actual saved Harness runtime pipeline is exported in `.harness/runtime-check.yaml`; it has not run.
 - Sixteen candidate runtime libraries resolved successfully. A password-redaction defect was reproduced with synthetic data and repaired in a pinned source patch. See [the offline runtime checkpoint](docs/runtime-offline-checkpoint.md).
+- The Linux custom image is built and its tool checks, extension probe, and driver failure-redaction check pass. See [the Linux runtime checkpoint](docs/linux-runtime-checkpoint.md). Delegate registration and real Atlas validation remain pending.
 - Native-executor credential handling remains unfinished. Exercise 003 stays inactive.
 
 The full lab is not yet a tested installation recipe. Each unverified stage remains explicitly pending.

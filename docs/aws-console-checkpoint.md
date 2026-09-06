@@ -1,6 +1,6 @@
 # AWS Console preparation and replication checkpoint
 
-September 6, 2026. **SSM role/profile created and verified; EC2 not launched.** The user explicitly approved the role and its assignment. The EC2 form now has the verified profile selected. Final configuration/network review is complete; launch/spending confirmation is pending. The user-data script has passed Bash syntax checking only.
+September 6, 2026. **EC2 launched; Session Manager and timed stop/restart/rearm verified.** The user explicitly approved the role/assignment and then the one-server launch with a $20 monthly AWS lab limit before credits.
 
 ## Recovering the side browser
 
@@ -51,11 +51,11 @@ Use **Edit** in Network settings to name the security group and choose the subne
 
 The small `t3.micro` default is unsuitable for this combined runtime. This account's picker allowed `m7i-flex.large`; `t3.medium` and `t3.large` were disabled. The `c7i-flex.large` option had only 4 GiB for a small compute-price reduction; the prepared choice retains the handoff's 8 GiB design.
 
-**Pending before Launch instance:** select the created profile, confirm the complete request and budget, inspect any final warnings and unexpected service/volume options, then submit only once and record the resulting instance ID. The plan file is a review manifest, not an AWS API payload.
+**Performed:** re-read the final form under the user’s approval and submit once. AWS confirmed `i-0635332c43aa733a5`, launched at 17:28:26 UTC. Lab security group is `sg-0b2f11fa130e4facc`; encrypted 30 GiB root is `vol-061b8b79de6fdaa6a`. The plan file is a review manifest, not an AWS API payload.
 
 ## 4. Automatic stop safeguard and required tests
 
-The drafted user data installs `mongodb-lab-autostop.timer` and its service, enables the timer at boot, then enables SSM Agent. `OnActiveSec=2h` measures from timer activation; restarting the timer starts another two-hour interval. It does not measure whether a person is currently using the server. [systemd timer documentation source](https://github.com/systemd/systemd/blob/main/man/systemd.timer.xml).
+The deployed user data installs `mongodb-lab-autostop.timer` and its service, enables the timer at boot, then enables SSM Agent. `OnActiveSec=2h` measures from timer activation; restarting the timer starts another two-hour interval. It does not measure whether a person is currently using the server. [systemd timer documentation source](https://github.com/systemd/systemd/blob/main/man/systemd.timer.xml).
 
 The service requests an operating-system poweroff. With EC2 **Shutdown behavior = Stop**, an EBS-backed instance stops and retains its disk. The disk can still accrue charges. [AWS shutdown behavior](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Using_ChangingInstanceInitiatedShutdownBehavior.html).
 
@@ -78,7 +78,16 @@ sudo systemctl restart mongodb-lab-autostop.timer
 sudo systemctl list-timers --all mongodb-lab-autostop.timer
 ```
 
-Before installing the delegate or running migrations, perform a controlled stop/start test: invoke the stop service during an idle window, observe **Stopped** in EC2, start the instance, reconnect through Session Manager, and verify the timer is active again. A separate short-deadline timer test is required to prove automatic expiration. Those behavioral tests are **not run** yet. Check remaining time before starting any migration; the timer can interrupt active work.
+**Performed acceptance test:** use [test-autostop.sh](../infra/aws/test-autostop.sh) as root through Session Manager on the idle server. It places a 45-second override under `/run`, reloads systemd, and restarts the actual timer. The timer's 17:31:57 UTC deadline elapsed and EC2 reported **Stopped**. No Console Stop action was used for this test. Start the same instance from **Instance state → Start instance**, reconnect through **Connect → In web browser → SSM Session Manager → Connect**, then run:
+
+```bash
+sudo systemctl is-active amazon-ssm-agent mongodb-lab-autostop.timer
+sudo systemctl is-enabled mongodb-lab-autostop.timer
+sudo systemctl show mongodb-lab-autostop.timer -p DropInPaths -p TimersMonotonic --no-pager
+sudo systemctl list-timers --all mongodb-lab-autostop.timer --no-pager
+```
+
+Observed: both services active, timer enabled, `OnActiveUSec=2h`, empty `DropInPaths`, next deadline **19:32:59 UTC**. The temporary `/run` override disappeared at boot and remote access recovered. This proves the expiry/stop/rearm path with a short interval; a full two-hour soak has not been run. Check remaining time before starting any migration; the timer can interrupt active work. Public IPv4 is released on stop, so re-read it after restart.
 
 ## 5. Harness and Atlas observations
 

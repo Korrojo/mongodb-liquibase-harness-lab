@@ -1,6 +1,6 @@
 {
   "document_type": "console_review_plan_not_an_aws_api_request",
-  "status": "draft_not_submitted",
+  "status": "launched_2026-09-06",
   "region": "us-east-1",
   "name": "mongodb-lab-delegate",
   "instance_count": 1,
@@ -33,8 +33,8 @@
     "hop_limit": 1
   },
   "instance_initiated_shutdown_behavior": "stop",
-  "shutdown_safeguard": "Two-hour systemd timer drafted in infra/aws/user-data.sh; not deployed or tested",
-  "shutdown_deadline": null,
+  "shutdown_safeguard": "PASS: cloud-init deployment, actual timer expiry via 45-second runtime override, EC2 Stopped, same-instance restart, SSM recovery, two-hour rearm with empty DropInPaths",
+  "shutdown_deadline": "2026-09-06T19:32:59Z",
   "cleanup_date": null,
   "spending_context": {
     "handoff_budget_usd": "10-20",
@@ -44,7 +44,8 @@
     "verified_credits_usd": 100,
     "verified_current_month_spend_usd": 0,
     "verified_compute_usd_per_hour": 0.09576,
-    "verified_date": "2026-09-06"
+    "verified_date": "2026-09-06",
+    "approved_monthly_lab_limit_usd": 20
   },
   "prelaunch_checks": [
     "Actual account and existing resource inventory",
@@ -57,5 +58,9 @@
   ],
   "verified_instance_profile_arn": "arn:aws:iam::224772450208:instance-profile/mongodb-lab-ec2-ssm",
   "verified_network_acl_id": "acl-076f802dc0142516a",
-  "launch_spending_confirmation": "pending: user asked to approve launch and a $20 monthly lab spending limit"
+  "launch_spending_confirmation": "Approved by user on 2026-09-06: one server and $20 monthly lab AWS spending limit before credits",
+  "instance_id": "i-0635332c43aa733a5",
+  "security_group_id": "sg-0b2f11fa130e4facc",
+  "root_volume_id": "vol-061b8b79de6fdaa6a",
+  "initial_launch_time_utc": "2026-09-06T17:28:26Z"
 }
