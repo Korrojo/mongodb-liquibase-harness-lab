@@ -30,3 +30,9 @@ The helper class is copied into the container at `/opt/mongodb-lab/probes`; reru
 The Atlas Edit User form and Harness Edit Encrypted Text form are prepared for the user. Save the exact database-user password into `atlas_password`, without surrounding quotes or URL encoding. If the password is uncertain, set a new password for this lab user in Atlas and save the same value in Harness. Do not use the Atlas website login password or a complete connection string. Keep all credentials out of chat and Git. After the user saves it, rerun the existing read-only pipeline before any migration.
 
 The first error is consistent with mismatched credentials; the password has not been retrieved or compared. Do not claim a confirmed mismatch until a corrected value succeeds. Atlas's pre-existing global access-list entry remains unchanged; this test does not establish a restricted network allowlist.
+
+## Retry after Atlas update
+
+The user reported updating the Atlas password. The Atlas edit form was closed; Harness still showed its Edit Encrypted Text form with an empty new-value field. A retry using the existing saved Harness secret also failed with MongoSecurityException at 20:37:19 UTC. Build 2 execution: `wJBKSQepS6eXm1E6xOlt6g`. The user was asked to paste the newly saved database password into Harness Secret Value and click Save. That save and a passing retry remain unverified.
+
+[Second execution](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines/mongodblabatlasconnectivity/executions/wJBKSQepS6eXm1E6xOlt6g/pipeline).
