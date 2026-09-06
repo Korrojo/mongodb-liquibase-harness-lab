@@ -1,0 +1,68 @@
+pipeline:
+  name: mongodb-lab-first-migration
+  identifier: mongodblabfirstmigration
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: First migration and repeat
+        identifier: First_migration_and_repeat
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: ShellScript
+                  name: Checkout lock migrate verify
+                  identifier: Checkout_lock_migrate_verify
+                  spec:
+                    shell: Bash
+                    executionTarget: {}
+                    delegateSelectors:
+                      - mongodb-lab
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          set +x
+                          set -Eeuo pipefail
+                          umask 077
+                          [[ "$LAB_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+                          test "$(id -u)" = 1001
+                          exec 9>/opt/mongodb-lab/locks/cluster0-liquibase_lab.lock
+                          flock -n 9 || { printf 'LAB_BUSY: another migration holds the target lock\n'; exit 75; }
+                          export LAB_TARGET_LOCK_HELD=yes
+                          export LAB_RUN_DIR
+                          LAB_RUN_DIR=$(mktemp -d /opt/mongodb-lab/work/migration.XXXXXX)
+                          cleanup() {
+                            local result=$?
+                            trap - EXIT
+                            if [[ "$LAB_RUN_DIR" == /opt/mongodb-lab/work/migration.* ]] && test -d "$LAB_RUN_DIR"; then
+                              rm -rf -- "$LAB_RUN_DIR"
+                            fi
+                            exit "$result"
+                          }
+                          trap cleanup EXIT
+                          trap 'exit 130' INT
+                          trap 'exit 143' TERM
+                          export GIT_TERMINAL_PROMPT=0
+                          export GIT_SSH_COMMAND='ssh -i /opt/mongodb-lab/git/id_ed25519 -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/opt/mongodb-lab/git/known_hosts -o ConnectTimeout=15'
+                          git init --quiet "$LAB_RUN_DIR/repo"
+                          cd "$LAB_RUN_DIR/repo"
+                          git remote add origin git@github.com:Korrojo/mongodb-liquibase-harness-lab.git
+                          git fetch --quiet --depth=1 origin "$LAB_COMMIT"
+                          git checkout --quiet --detach FETCH_HEAD
+                          test "$(git rev-parse HEAD)" = "$LAB_COMMIT"
+                          printf 'REVIEWED_COMMIT=%s\n' "$LAB_COMMIT"
+                          timeout --signal=TERM --kill-after=10s 5m bash scripts/run-first-migration.sh
+                    environmentVariables:
+                      - name: ATLAS_PASSWORD
+                        type: String
+                        value: <+secrets.getValue("atlas_password")>
+                      - name: LAB_COMMIT
+                        type: String
+                        value: <+input>
+                    outputVariables: []
+                  timeout: 7m
+        tags: {}
