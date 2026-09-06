@@ -6,4 +6,6 @@ Expected baseline from the handoff: Custom stage, Bash Shell Script, On Delegate
 
 The later migration pipeline must check out a reviewed exact commit, acquire a lock shared by all runs for the target database, perform preflight/validation/update/verification, preserve error exits, and clean per-run files. Keep all these operations in one orchestration script initially. GitHub connector creation alone does not provide a checkout inside a Shell Script step.
 
+`atlas-connectivity.yaml` is saved and validated as `mongodb-lab-atlas-connectivity`. Its first execution failed with MongoSecurityException; password correction is pending. It injects the project secret as an environment variable and runs the read-only compiled Java helper. Install that helper using `infra/delegate/install-connectivity-probe.sh` after each container replacement. See [the Atlas checkpoint](../docs/atlas-connectivity-checkpoint.md) for exact steps and evidence.
+
 Secret values do not belong in YAML. Record only project secret references once created through the supported account workflow. Keep triggers disabled during lab validation.

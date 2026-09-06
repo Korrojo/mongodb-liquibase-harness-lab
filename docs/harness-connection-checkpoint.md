@@ -17,9 +17,9 @@ Java writes version information to stderr, which Harness labels ERROR in individ
 
 ## Remaining desk actions
 
-### Repository read access: prepared, approval pending
+### Repository read access: approved and verified
 
-An Ed25519 key pair was generated on EC2. The private key remains on that server; it has not been displayed or added to the image. It is prepared for a read-only mount into the dedicated delegate after approval.
+An Ed25519 key pair was generated on EC2. The private key remains on that server; it has not been displayed or added to the image. The user saved the key in GitHub with write access unchecked; the matching fingerprint and Read-only status were verified.
 
 | Field | Prepared value |
 |---|---|
@@ -28,9 +28,11 @@ An Ed25519 key pair was generated on EC2. The private key remains on that server
 | Public-key fingerprint | `SHA256:HGZUrEyXCJo3x7VOxzcXCA/NkSllq0/Tzwh2WuwqEzc` |
 | Private-key path on EC2 | `/etc/mongodb-lab/git/id_ed25519`, mode 0600, UID 1001/GID 0 |
 | GitHub access | Read-only; **Allow write access remains unchecked** |
-| Current state | GitHub Add deploy key form filled; Add key has not been submitted or verified |
+| Current state | Saved Read-only key; mount RW=false and exact-commit fetch as UID 1001 verified |
 
-The user may click **Add key** in the prepared GitHub tab and complete any identity prompt, or explicitly approve the prepared key in chat. This is a new repository-access grant, separate from the approved Harness registration. After approval, verify the saved key is read-only, mount the key directory read-only in the delegate, and test fetching this repository at an exact commit. Do not copy the mini's personal GitHub CLI token to EC2.
+The host ran `infra/delegate/attach-repository-access.sh` from reviewed commit `4eea9aaeace0440b690a1127b4e54eaa1ac994f8`. It preserved the old container as stopped `mongodb-lab-before-git`, recreated `mongodb-lab` with the same hostname/image, and mounted the Git directory with `RW=false`. Harness returned to Connected. Never start both containers.
+
+`scripts/verify-repository-access.sh` passed inside the delegate as UID 1001 at that exact commit; checkout path `/opt/mongodb-lab/work/repository-check.UjUpY4`. The host also has a private checkout at `/opt/mongodb-lab/repo` using the same scoped key. No personal GitHub CLI token was copied to EC2.
 
 GitHub's Ed25519 host entry was copied from [its official SSH fingerprint page](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints) into `/etc/mongodb-lab/git/known_hosts`. Expected host fingerprint: `SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU`. Strict host checking must remain enabled for the actual fetch.
 
@@ -40,10 +42,10 @@ On the Mac mini, open **ChatGPT Settings → Computer Use → Locked use**, enab
 
 ## Continue remotely after these handoffs
 
-1. Verify the saved GitHub key and a real read-only checkout on the delegate. Keep one shared target lock and exact-commit checkout in the later migration orchestration.
+1. Preserve the verified read-only repository access. Keep one shared target lock and exact-commit checkout in the migration orchestration.
 2. Test Atlas DNS/TLS and authenticated driver connectivity using the Harness secret, without displaying its value. Then run collection creation and repeat/no-op verification in `liquibase_lab`.
-3. Build and validate the separate native-runtime candidate on Linux before promoting it or activating exercise 003. The registered image still contains only the visible-URL patch.
+3. The separate native candidate now passes Linux and isolated container checks; see the native checkpoint. Promote through controlled replacement and complete live acceptance before activating exercise 003. The registered image still contains only the visible-URL patch.
 4. Complete incremental index, scoped rollback, native fixtures/rollback, and failure/concurrency checks; record real results in the runbook.
 5. Stop the instance between work sessions and confirm Stopped. The current boot timer is a fallback; EBS storage continues while stopped.
 
-No Atlas connection or database migration has occurred at this checkpoint. The registered delegate is ready for the next steps, and the runtime check passes.
+The first Atlas read-only connection attempt reached the authentication step but failed with MongoSecurityException. See [the Atlas checkpoint](atlas-connectivity-checkpoint.md). No database migration has occurred. The runtime check passes; password correction is pending.

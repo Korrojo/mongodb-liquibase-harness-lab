@@ -1,6 +1,6 @@
-# Native runtime repair: local candidate checkpoint
+# Native runtime repair: local and Linux candidate checkpoint
 
-Verified September 6, 2026 on the Mac mini. **This candidate has not been built into the EC2 image or tested against Atlas.** The stopped host still holds `mongodb-lab-delegate:lab.1` from the Linux checkpoint. Exercise 003 remains inactive.
+Verified September 6, 2026 on the Mac mini and EC2. The separate `lab.native-candidate` image passes Linux tests and isolated container probes. **It has not been promoted to the registered delegate or tested against Atlas.** The active delegate still uses `lab.1`. Exercise 003 remains inactive.
 
 ## Problem and resulting behavior
 
@@ -27,7 +27,9 @@ The connection method and shell flags follow [MongoDB's environment-variable scr
 | Test secrets | Synthetic only; no Atlas password used |
 | Candidate JAR SHA-256 | `6fcbaa18f7433440994d452e308745a4032affce17caecac2189fa988dee14cc` |
 | Offline RuntimeProbe | One provider, three change types, all three exercises parse, visible URL redaction passed |
-| Linux mongosh 2.10.0, candidate container, live authentication, fixtures and rollback | **Not tested** |
+| Linux focused suite/package | PASS: 62 tests, no failures/errors, one existing skip; real mongosh 2.10.0 security check ran |
+| Candidate container as UID 1001 | PASS: offline RuntimeProbe; isolated real mongosh failure, argument/script permissions/cleanup and own-log canary checks |
+| Live native authentication, fixtures and rollback | **Not tested** |
 
 The first test iteration caught a duplicate stream-cleanup call. The final implementation uses a single dedicated output reader and passed the cleanup checks. An offline packaging attempt lacked the Maven JAR plugin; an approved dependency download resolved that and the full focused package run passed. These results do not represent the entire upstream suite or successful database connectivity.
 
@@ -41,7 +43,7 @@ MongoshRunnerSecurityTest,MongoshRunnerTest,MongoshFileCreatorTest,MongoshChange
 
 **Where:** EC2 Session Manager, after starting the same approved instance and verifying its fresh two-hour stop deadline. **Prerequisites:** the existing `/opt/mongodb-lab/build-001` tool downloads and a credential-free checkout/copy of the current lab files. Set `LAB_REPO` to that actual directory; never paste a token into a clone URL.
 
-These are the next prepared commands; their Linux execution is pending. Open a root Bash shell with `sudo -i`, then change to the actual lab-file directory. The normal `prepare-on-ec2.sh` still builds the previously verified image with only the visible-URL repair and does not apply patch 002 automatically.
+The complete automated build and container probes are now in `infra/delegate/build-native-candidate.sh`, tested from reviewed repository commit `4f5706401a58ae5bab9c6bb8bcb120ad08ee959f`. From that checkout run `sudo bash infra/delegate/build-native-candidate.sh`. It requires the existing build-001 downloads and active stop timer, creates `/opt/mongodb-lab/build-native-001`, and refuses to overwrite an existing build. Choose a fresh build path in a reviewed copy for a repeat. It does not register or promote the image. The expanded source-test portion below explains the same pinned patch/test workflow. The normal `prepare-on-ec2.sh` still builds the original lab.1 image with only patch 001.
 
 ```bash
 # First change to the actual directory containing this lab repository.
@@ -70,14 +72,21 @@ done
 
 Expected: 62 tests, no failures/errors, only the existing DNS skip; specifically confirm the real mongosh security test ran and did not skip. A version check alone does not pass this step. Record the actual Linux JAR hash; build metadata may differ from the mini.
 
-Next, prepare a separate Docker build context with that candidate JAR, the hash-checked libraries, mongosh 2.10.0, the current wrapper, and the pinned Dockerfile. Build a distinct tag such as `mongodb-lab-delegate:lab.native-candidate`; preserve `lab.1`. Repeat the container extension and driver probes, exercise native failure inside that container, and inspect its temporary files and mongosh-owned logs. Successful Atlas authentication, fixtures, repeat execution, and rollback remain separate required checks. Promote a tested image explicitly and update its recorded fingerprint before enabling 003.
+The automated build creates the separate image with the hash-checked libraries, mongosh 2.10.0, wrapper and pinned Dockerfile. It runs RuntimeProbe and NativeFailureProbe in containers with networking disabled and requires nonempty mongosh-owned logs without the synthetic canary. Require `NATIVE_CANDIDATE_BUILD_PASS`, `NATIVE_MONGOSH_LOGS_CLEAN` and zero exit. Logs are `maven-test.log`, `validation/runtime.log`, and `validation/native.log` under build-native-001; the parent log is `/opt/mongodb-lab/native-candidate-build.log`.
 
-## Account handoff still pending
+## Observed Linux artifacts
 
-After the user's “Auth done” message, both prepared forms remained open and no saved lab-user/secret row was observed. GitHub authentication and private publication were already complete. The required user steps are:
+| Artifact | Value |
+|---|---|
+| Candidate image | `mongodb-lab-delegate:lab.native-candidate` |
+| Image ID | `sha256:dbbe662baa881398d88262981262c74f325e5bb5bc5b8cf911e8ad3781bfb663` |
+| Linux extension JAR SHA-256 | `07dc953dea798763ab530f62dd8250a48991225729de13f8ad9d90e5c512674a` |
+| User / final result | `1001` / `NATIVE_BUILD_EXIT=0` |
 
-1. Atlas: enter `liquibase_lab_user` and a new strong password in the prepared form. Keep the specific `readWrite` privilege on `liquibase_lab` and the Cluster0 restriction; select Add User.
-2. Harness: put that same password in the prepared `atlas_password` Secret Value field and Save. Keep passwords out of chat and Git.
-3. Confirm the separately prepared Harness delegate registration when ready. It connects the EC2 container `mongodb-lab` to Default Project and permits running the saved runtime check. The installer token stays in a root-only file; no inbound ports, Docker socket, or automatic upgrader are planned.
+Linux and mini hashes differ because source packaging includes build metadata; neither is claimed byte-identical to the vendor release. The same pinned source and reviewed patches were used.
 
-Browser credential-entry and new-access rules require those user actions. The existing AWS budget and SSM approval do not need to be repeated.
+## Remaining acceptance
+
+Preserve lab.1 for rollback. Replace the registered container through a controlled procedure that retains hostname, limits, token file and read-only Git mount; reinstall copied helper classes and verify Harness reconnects. Real native authentication, fixtures, repeat/no-op behavior, scoped rollback, failure and concurrency are still required. Do not activate 003 on the original image.
+
+Atlas user/secret, delegate registration and read-only GitHub access are already saved and approved. The first driver authentication attempt failed; see [the Atlas checkpoint](atlas-connectivity-checkpoint.md). Password correction and the phone-after-lock test are the remaining desk handoffs.

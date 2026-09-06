@@ -1,6 +1,6 @@
 # MongoDB Liquibase Harness lab
 
-Status: EC2 deployed on September 6, 2026; Session Manager, timed stop, restart, and two-hour rearm verified. Atlas connection and migrations remain unrun. The local branch is `setup/lab-foundation`. Published privately to `Korrojo/mongodb-liquibase-harness-lab`, branch `setup/lab-foundation`.
+Status: EC2 deployed on September 6, 2026; Session Manager, timed stop/restart, Harness runtime and read-only Git access verified. The first Atlas connection attempt failed at authentication; password correction and all migrations remain pending. Published privately to `Korrojo/mongodb-liquibase-harness-lab`, branch `setup/lab-foundation`.
 
 Architecture: private GitHub repository → Harness Custom stage/Shell Script → persistent Docker delegate on EC2 → Atlas `liquibase_lab`. The Mac mini is the management workstation.
 
@@ -51,6 +51,7 @@ The detailed planning runbook is currently in the parent task's `outputs/mongodb
 - The actual saved Harness runtime pipeline is exported in `.harness/runtime-check.yaml`; Build 1 passed on the connected EC2 delegate.
 - Sixteen candidate runtime libraries resolved successfully. A password-redaction defect was reproduced with synthetic data and repaired in a pinned source patch. See [the offline runtime checkpoint](docs/runtime-offline-checkpoint.md).
 - The Linux custom image is built and its tool checks, extension probe, and driver failure-redaction check pass. See [the Linux runtime checkpoint](docs/linux-runtime-checkpoint.md). Delegate registration is complete and its Harness runtime check passed. The Atlas lab user and Harness secret are saved; real Atlas validation remains pending. See [the connection checkpoint](docs/harness-connection-checkpoint.md).
-- A native-executor repair candidate passes 62 focused local tests (61 passed, one existing skip) and packaging. See [the candidate checkpoint](docs/native-runtime-candidate.md). It has not been deployed to EC2 or tested with Atlas; exercise 003 stays inactive.
+- A native-executor repair candidate passes 62 focused tests (61 passed, one existing skip) on the mini and Linux. Its separate EC2 image passes isolated container checks, including mongosh-owned logs. See [the candidate checkpoint](docs/native-runtime-candidate.md). It has not been promoted or tested with Atlas; exercise 003 stays inactive.
+- The authenticated read-only Harness check failed with MongoSecurityException; the user/cluster settings are verified and password correction is pending. See [the Atlas checkpoint](docs/atlas-connectivity-checkpoint.md).
 
 The full lab is not yet a tested installation recipe. Each unverified stage remains explicitly pending.

@@ -26,7 +26,7 @@ POM  696fc7ac935c4273ed9829b9fd6ef94e277e31116da4c07f7738923c3e26095d
 
 ## Native credential issue and local candidate
 
-A subsequent [candidate patch and checkpoint](native-runtime-candidate.md) passes local tests for environment-based connection handoff, output redaction, and temporary-file cleanup. It has not been built or tested on EC2. The observations below still apply to the original vendor artifact and the current `lab.1` image.
+A subsequent [candidate patch and checkpoint](native-runtime-candidate.md) passes tests on the mini and Linux for environment-based connection handoff, output redaction, and temporary-file cleanup. Its separate EC2 image also passes isolated native container checks. It has not been promoted. The observations below still apply to the original vendor artifact and the current `lab.1` image.
 
 Read-only disassembly of the downloaded `MongoshRunner` confirms that it adds the database connection string to the child-process argument list. It masks a matching credential pattern in one informational log statement; that masking does not remove credentials from process arguments. A failure path also constructs a message from `getCommandString()`, so comprehensive error redaction needs verification.
 
@@ -38,9 +38,9 @@ Do not enable the native changeset until a version or reviewed implementation pa
 
 ## Validation still required
 
-1. Register the built delegate and execute the saved Harness runtime-check pipeline.
+1. Preserve the completed delegate registration, read-only repository access and successful Harness runtime-check baseline.
 2. Complete real Atlas authentication and migration acceptance tests.
-3. Repair and test native execution credentials, logs, arguments, and temporary-file cleanup.
+3. Promote the tested native candidate and complete live native acceptance; isolated credential/log/argument/cleanup checks pass.
 4. Verify operational upgrade/restart behavior after registration.
 5. Complete rollback, repeat, failure, and concurrency checks before labeling the full lab verified.
 
@@ -50,7 +50,7 @@ Do not enable the native changeset until a version or reviewed implementation pa
 - `liquibase.integration.commandline.Main --version` passed with Java 17.0.20 on the mini. `scripts/RuntimeProbe.java` loaded exactly one MongoDB database implementation, registered createCollection/createIndex/mongoFile, and parsed all three exercises without opening a connection. These are local JVM checks, not EC2/container or Atlas validation.
 - The same probe FAILED its synthetic-password redaction assertion: the released extension returns the entire URI from `MongoConnection.getVisibleUrl()`. This establishes another credential issue independently of the native argv finding. No real database credentials were used. The source repair and focused unit tests now pass at pinned upstream commit `1d2e9bc199ec364fc4e1520fbde5cfaad7b3f021`.
 
-The first visible-URL source patch now passes the offline probe. The detailed reproduction and limits are recorded in [runtime-offline-checkpoint.md](runtime-offline-checkpoint.md). The native candidate still needs Linux/container and live acceptance before promotion.
+The first visible-URL source patch now passes the offline probe. The detailed reproduction and limits are recorded in [runtime-offline-checkpoint.md](runtime-offline-checkpoint.md). The native candidate passes Linux/container checks; promotion and live acceptance remain pending.
 
 ## EC2 host and image preparation
 

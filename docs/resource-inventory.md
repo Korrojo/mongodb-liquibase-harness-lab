@@ -21,10 +21,10 @@ Updated September 6, 2026 after the desktop app restart restored normal browser 
 | Atlas cluster | `Cluster0`, project `PROJECT_01`, FREE, MongoDB 8.0.32 | AWS N. Virginia, three-node replica set, 330.02 MB of 512 MB shown; backups inactive |
 | Atlas database users | Existing admin plus saved SCRAM liquibase_lab_user | Lab user: readWrite on liquibase_lab, one cluster; saved Harness secret atlas_password also verified |
 | Atlas network access | Six active rules, including `0.0.0.0/0` | Existing rules untouched; adding a `/32` alone would not narrow access while the broad rule remains |
-| `liquibase_lab` database | Not in the current database list | No connection or migration made by this task |
+| `liquibase_lab` database | Absent at initial inventory | First read-only connection attempt failed at authentication; no migration made by this task |
 | EC2 public IPv4 | `3.237.62.82` for this boot | Re-read after every stop/start; previous address released |
 | Phone and MacBook fallback | Current browser access works; access after screen lock is not verified | Locked use setting state still unconfirmed |
 
 The cloud console inventory does not replace a runtime connectivity test. No other region was inventoried. See [the console checkpoint](aws-console-checkpoint.md) for the deployed settings and next steps.
 
-See [the Harness connection checkpoint](harness-connection-checkpoint.md) for the saved credentials, successful runtime check, and prepared read-only GitHub key awaiting approval. No live database test has run.
+See [the Harness connection checkpoint](harness-connection-checkpoint.md) for saved credentials, successful runtime check, and approved read-only GitHub access with an exact-commit checkout. The first authenticated read-only Atlas check failed; see [the Atlas checkpoint](atlas-connectivity-checkpoint.md). No migration has run.

@@ -10,7 +10,7 @@ Execution progress, September 6: a local starter repository now exists in this t
 
 The [console replication checkpoint](aws-console-checkpoint.md) records the exact reviewed selections, current resource IDs, created IAM role, launched EC2 instance, and tested automatic stop safeguard. It supplements this full runbook as execution progresses.
 
-The [native runtime candidate checkpoint](native-runtime-candidate.md) records a subsequent local credential-handling repair, 62 focused tests (61 passed, one existing skipped), packaging, and the exact next Linux validation commands. That candidate is not in the registered EC2 image. The [Harness connection checkpoint](harness-connection-checkpoint.md) records the saved Atlas user and Harness secret, approved delegate registration, and successful first Harness runtime check. Repository read-key approval, locked-screen access testing, and live migration checks remain pending.
+The [native runtime candidate checkpoint](native-runtime-candidate.md) records the credential-handling repair, 62 focused tests on both the mini and Linux (61 passed, one existing skipped), packaging, and successful isolated candidate-container checks. That candidate is not in the registered EC2 image. The [Harness connection checkpoint](harness-connection-checkpoint.md) records the approved registration, successful runtime check and verified read-only Git checkout. The first [Atlas authenticated probe](atlas-connectivity-checkpoint.md) failed with MongoSecurityException; the saved user/admin authentication database/Cluster0 scope are correct and password correction is pending. Locked-screen access testing and live migrations also remain pending.
 
 ## 1. Feasibility and division of work
 
@@ -40,7 +40,7 @@ Harness: manual pipeline, secrets, execution history
         ▼
 EC2: Docker → persistent custom Harness delegate container
                   Git + Java + Liquibase + one MongoDB extension + mongosh
-        │ TLS connection from EC2's allowlisted public IP
+        │ TLS connection from EC2 (Atlas currently retains an existing broad access rule)
         ▼
 Atlas Free: liquibase_lab
 
@@ -59,12 +59,12 @@ Tailscale is the private network for your MacBook assistance. It is separate fro
 | Mac power settings | AC sleep setting was 0; display sleep was 10 minutes |
 | Browser tools | Chrome extension and in-app browser surfaces were available |
 | Harness sign-in | Existing in-app tab was signed into the account named in the handoff |
-| Saved pipeline | `mongodb-lab-runtime-check` opened in Default Project and displayed Validated; no run was started |
+| Saved pipelines | Runtime check Build 1 succeeded; read-only Atlas check Build 1 failed at authentication |
 | Tailscale | Application reported running; MacBook-to-mini connectivity and screen control were not tested |
 | Phone Remote | Supported by current documentation; this phone's pairing and this task's remote controls were not tested |
-| AWS / Atlas | Live console inventory completed after restart; $100 AWS credits, $0 current-month spend; Atlas FREE/8.0.32, lab database absent, restricted lab user pending |
+| AWS / Atlas | Initial billing snapshot: $100 credits/$0 month spend, subject to delay; Atlas FREE/8.0.32, saved lab user restricted to Cluster0; password correction pending |
 | EC2 and IAM | Approved role created; instance `i-0635332c43aa733a5` launched; Session Manager and timed stop/restart/rearm passed |
-| Toolchain | Git, AWS CLI, GitHub CLI, and Docker commands exist locally; authentication, Docker daemon health, and runtime versions were not tested |
+| Toolchain | EC2 Docker and custom runtime verified; GitHub CLI/private publication works locally and scoped deploy-key checkout works on EC2 |
 
 ## 4. Improvements required before calling this reproducible
 
@@ -307,6 +307,6 @@ MongoDB changes can partially succeed before an error. Before any retry, inspect
 
 ## 7. Immediate next checkpoint
 
-Complete the prepared Atlas/Harness credential handoff and approve the prepared delegate registration. The custom Linux image is built and verified; the private repository is published on `setup/lab-foundation`. Real database connection, migration, repeat, rollback, and failure tests remain pending. Keep the native exercise inactive until its separate credential-handling issue is repaired and tested.
+Correct the saved Atlas password in Harness, then rerun the existing read-only connectivity pipeline with normal preflight. User/secret creation, delegate registration, and read-only Git access are already approved and verified; no repeated approval is needed. The separate native image passes Linux/container checks but is not promoted. Real authenticated access, migrations, repeat, rollback, failure and concurrency remain pending. Keep 003 inactive until the tested native image is active and live acceptance succeeds.
 
-The [Linux runtime checkpoint](linux-runtime-checkpoint.md) records the exact build inputs, final image, tests, corrected CLI entry point, and remaining credential/registration gates.
+Use the [Linux runtime checkpoint](linux-runtime-checkpoint.md) for original image reproduction and the newer [Harness](harness-connection-checkpoint.md), [native](native-runtime-candidate.md), and [Atlas](atlas-connectivity-checkpoint.md) checkpoints for current verified state and exact next steps. The current boot's automatic stop deadline is 21:39:46 UTC / 5:39:46 PM Eastern on September 6; read a fresh deadline after any restart.
