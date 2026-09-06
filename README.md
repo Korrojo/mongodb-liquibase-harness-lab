@@ -1,6 +1,6 @@
 # MongoDB Liquibase Harness lab
 
-Status: EC2 deployed on September 6, 2026; Session Manager, timed stop, restart, and two-hour rearm verified. Atlas connection and migrations remain unrun. The local branch is `setup/lab-foundation`. The private GitHub repository is created; initial branch publication is in progress.
+Status: EC2 deployed on September 6, 2026; Session Manager, timed stop, restart, and two-hour rearm verified. Atlas connection and migrations remain unrun. The local branch is `setup/lab-foundation`. Published privately to `Korrojo/mongodb-liquibase-harness-lab`, branch `setup/lab-foundation`.
 
 Architecture: private GitHub repository → Harness Custom stage/Shell Script → persistent Docker delegate on EC2 → Atlas `liquibase_lab`. The Mac mini is the management workstation.
 

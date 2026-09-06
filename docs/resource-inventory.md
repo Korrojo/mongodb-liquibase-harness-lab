@@ -6,7 +6,7 @@ Updated September 6, 2026 after the desktop app restart restored normal browser 
 |---|---|---|
 | GitHub owner | Connected plugin identified `Korrojo` | Read in this execution phase |
 | Local repository | Created in this task's `lab/` directory | Branch `setup/lab-foundation`; remote not configured |
-| Remote repository | PRIVATE `Korrojo/mongodb-liquibase-harness-lab` created | Initial setup-branch publication in progress |
+| Remote repository | PRIVATE `Korrojo/mongodb-liquibase-harness-lab` created | Setup branch published; initial deployment checkpoint `9b7df8f` |
 | AWS account | Learning-account `224772450208`, `lab-admin`, `us-east-1` | Console Home; $100 credit balance, $0 current-month spend, free-plan end January 31, 2027 |
 | Lab EC2 instance | `i-0635332c43aa733a5`, `mongodb-lab-delegate` | Launched 2026-09-06 17:28:26 UTC; timed stop and restart verified |
 | Lab EBS volume | `vol-061b8b79de6fdaa6a` | 30 GiB encrypted root; delete-on-termination Yes; same volume retained after stop |

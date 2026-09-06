@@ -25,4 +25,4 @@ EC2 deployment and management/shutdown tests PASS. Container build/probe and a d
 | Native migration and rollback | NOT RUN |
 | Failure and concurrency checks | NOT RUN |
 | Stop/start and shutdown safeguard | PASS: actual timer expired using a 45-second runtime override; EC2 Stopped observed; same instance restarted, SSM reconnected, two-hour timer rearmed with no override |
-| GitHub publication | NOT RUN |
+| GitHub publication | PASS: private repository, setup/lab-foundation pushed; GitHub helper configured only in this local repository |

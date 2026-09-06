@@ -305,6 +305,6 @@ MongoDB changes can partially succeed before an error. Before any retry, inspect
 
 ## 7. Immediate next checkpoint
 
-Complete the prepared Atlas/Harness credential handoff and approve the prepared delegate registration. The custom Linux image is built and verified; the private repository is created and initial publication is in progress. Real database connection, migration, repeat, rollback, and failure tests remain pending. Keep the native exercise inactive until its separate credential-handling issue is repaired and tested.
+Complete the prepared Atlas/Harness credential handoff and approve the prepared delegate registration. The custom Linux image is built and verified; the private repository is published on `setup/lab-foundation`. Real database connection, migration, repeat, rollback, and failure tests remain pending. Keep the native exercise inactive until its separate credential-handling issue is repaired and tested.
 
 The [Linux runtime checkpoint](linux-runtime-checkpoint.md) records the exact build inputs, final image, tests, corrected CLI entry point, and remaining credential/registration gates.
