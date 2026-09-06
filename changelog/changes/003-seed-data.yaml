@@ -3,6 +3,7 @@ databaseChangeLog:
   - changeSet:
       id: lab-003-seed-data
       author: Korrojo
+      runWith: mongosh
       comment: Exercise the Harness mongoFile change using only synthetic fixtures.
       changes:
         - mongoFile:
