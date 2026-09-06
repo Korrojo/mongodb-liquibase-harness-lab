@@ -8,7 +8,7 @@ Updated September 6, 2026 after the desktop app restart restored normal browser 
 | Local repository | Created in this task's `lab/` directory | Branch `setup/lab-foundation`; remote not configured |
 | Remote repository | PRIVATE `Korrojo/mongodb-liquibase-harness-lab` created | Setup branch published; initial deployment checkpoint `9b7df8f` |
 | AWS account | Learning-account `224772450208`, `lab-admin`, `us-east-1` | Console Home; $100 credit balance, $0 current-month spend, free-plan end January 31, 2027 |
-| Lab EC2 instance | `i-0635332c43aa733a5`, `mongodb-lab-delegate` | Launched 2026-09-06 17:28:26 UTC; timed stop and restart verified |
+| Lab EC2 instance | `i-0635332c43aa733a5`, `mongodb-lab-delegate` | Launched 2026-09-06 17:28:26 UTC; timed stop and restart verified; STOPPED at the final session checkpoint |
 | Lab EBS volume | `vol-061b8b79de6fdaa6a` | 30 GiB encrypted root; delete-on-termination Yes; same volume retained after stop |
 | IAM role/profile | CREATED and verified: `mongodb-lab-ec2-ssm` | Role `arn:aws:iam::224772450208:role/mongodb-lab-ec2-ssm`; profile `arn:aws:iam::224772450208:instance-profile/mongodb-lab-ec2-ssm`; one policy, `AmazonSSMManagedInstanceCore`; role attached to the launched instance |
 | Lab security group | `sg-0b2f11fa130e4facc`, `mongodb-lab-delegate-sg` | Created at launch with zero inbound rules; default group untouched |
@@ -22,7 +22,7 @@ Updated September 6, 2026 after the desktop app restart restored normal browser 
 | Atlas database users | One existing SCRAM user: `admin`, `atlasAdmin @ admin`, all resources | A separate restricted lab user still needs creation |
 | Atlas network access | Six active rules, including `0.0.0.0/0` | Existing rules untouched; adding a `/32` alone would not narrow access while the broad rule remains |
 | `liquibase_lab` database | Not in the current database list | No connection or migration made by this task |
-| EC2 current public IPv4 | `100.58.248.220` after restart | Earlier `100.56.248.45` released; recheck at every start |
+| EC2 public IPv4 | None while stopped | Last running IP `100.58.248.220`; re-read after the next start |
 | Phone and MacBook fallback | Current browser access works; access after screen lock is not verified | Locked use setting state still unconfirmed |
 
 The cloud console inventory does not replace a runtime connectivity test. No other region was inventoried. See [the console checkpoint](aws-console-checkpoint.md) for the deployed settings and next steps.

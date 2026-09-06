@@ -1,6 +1,6 @@
 # Linux runtime build and acceptance checkpoint
 
-Verified September 6, 2026 on EC2 `i-0635332c43aa733a5`. The image is built but **not registered with Harness**, and no Atlas connection or migration has run.
+Verified September 6, 2026 on EC2 `i-0635332c43aa733a5`. The host was then stopped through the tested stop service and EC2 Stopped was confirmed; its disk and built image are retained. The image is built but **not registered with Harness**, and no Atlas connection or migration has run.
 
 ## Exact runtime
 
