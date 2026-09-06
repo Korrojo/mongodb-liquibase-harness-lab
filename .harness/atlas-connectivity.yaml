@@ -1,0 +1,37 @@
+pipeline:
+  name: mongodb-lab-atlas-connectivity
+  identifier: mongodblabatlasconnectivity
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Atlas connectivity
+        identifier: Atlas_connectivity
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: ShellScript
+                  name: Authenticate and read lab metadata
+                  identifier: Authenticate_and_read_lab_metadata
+                  spec:
+                    shell: Bash
+                    executionTarget: {}
+                    delegateSelectors:
+                      - mongodb-lab
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          set +x
+                          set -euo pipefail
+                          java -cp '/opt/mongodb-lab/lib/*:/opt/mongodb-lab/probes' AtlasConnectivityProbe
+                    environmentVariables:
+                      - name: ATLAS_PASSWORD
+                        type: String
+                        value: <+secrets.getValue("atlas_password")>
+                    outputVariables: []
+                  timeout: 2m
+        tags: {}
