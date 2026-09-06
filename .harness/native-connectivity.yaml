@@ -1,0 +1,47 @@
+pipeline:
+  name: mongodb-lab-native-connectivity
+  identifier: mongodblabnativeconnectivity
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  stages:
+    - stage:
+        name: Native authenticated read
+        identifier: Native_authenticated_read
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: ShellScript
+                  name: Verify mongosh credentials and cleanup
+                  identifier: Verify_mongosh_credentials_and_cleanup
+                  spec:
+                    shell: Bash
+                    executionTarget: {}
+                    delegateSelectors:
+                      - mongodb-lab
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          set +x
+                          set -Eeuo pipefail
+                          umask 077
+                          LAB_NATIVE_DIR=$(mktemp -d /opt/mongodb-lab/work/native-read.XXXXXX)
+                          trap 'rm -rf -- "$LAB_NATIVE_DIR"' EXIT
+                          export HOME="$LAB_NATIVE_DIR/home"
+                          mkdir -p "$HOME"
+                          cd "$LAB_NATIVE_DIR"
+                          result=0
+                          timeout --kill-after=10s 120s java -Djava.io.tmpdir="$LAB_NATIVE_DIR" -cp '/opt/mongodb-lab/lib/*:/opt/mongodb-lab/probes' NativeAtlasProbe > native.log 2>&1 || result=$?
+                          java -cp '/opt/mongodb-lab/lib/*:/opt/mongodb-lab/probes' LabFirstMigrationProbe sanitize native.log
+                          test "$result" = 0
+                          grep -F 'NATIVE_ATLAS_ACCEPTANCE_PASS' native.log >/dev/null
+                    environmentVariables:
+                      - name: ATLAS_PASSWORD
+                        type: String
+                        value: <+secrets.getValue("atlas_password")>
+                    outputVariables: []
+                  timeout: 3m
+        tags: {}

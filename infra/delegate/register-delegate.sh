@@ -11,7 +11,12 @@ if docker container inspect mongodb-lab >/dev/null 2>&1; then
     printf '%s\n' 'The delegate container already exists; inspect it before changing it.'
     exit 1
 fi
-LAB_IMAGE_ID=$(docker image inspect mongodb-lab-delegate:lab.1 --format '{{.Id}}')
+LAB_IMAGE_TAG=${LAB_IMAGE_TAG:-mongodb-lab-delegate:lab.1}
+case "$LAB_IMAGE_TAG" in
+    mongodb-lab-delegate:lab.1|mongodb-lab-delegate:lab.native-candidate) ;;
+    *) printf 'Unreviewed delegate image tag\n' >&2; exit 1 ;;
+esac
+LAB_IMAGE_ID=$(docker image inspect "$LAB_IMAGE_TAG" --format '{{.Id}}')
 LAB_EXTRA_ARGS=()
 if test -n "${LAB_DELEGATE_HOSTNAME:-}"; then
     LAB_EXTRA_ARGS+=(--hostname "$LAB_DELEGATE_HOSTNAME")
