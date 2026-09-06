@@ -48,9 +48,9 @@ The detailed planning runbook is currently in the parent task's `outputs/mongodb
 
 - User approved the $20 monthly AWS lab limit. Instance `i-0635332c43aa733a5` is deployed with the approved SSM role. A 45-second test stopped the instance; restart restored remote access and the normal two-hour timer. See [the console checkpoint](docs/aws-console-checkpoint.md).
 - The expired GitHub CLI sign-in was renewed through the user’s browser authorization. Private repository: `Korrojo/mongodb-liquibase-harness-lab`; publish only the setup branch.
-- The actual saved Harness runtime pipeline is exported in `.harness/runtime-check.yaml`; it has not run.
+- The actual saved Harness runtime pipeline is exported in `.harness/runtime-check.yaml`; Build 1 passed on the connected EC2 delegate.
 - Sixteen candidate runtime libraries resolved successfully. A password-redaction defect was reproduced with synthetic data and repaired in a pinned source patch. See [the offline runtime checkpoint](docs/runtime-offline-checkpoint.md).
-- The Linux custom image is built and its tool checks, extension probe, and driver failure-redaction check pass. See [the Linux runtime checkpoint](docs/linux-runtime-checkpoint.md). Delegate registration and real Atlas validation remain pending.
+- The Linux custom image is built and its tool checks, extension probe, and driver failure-redaction check pass. See [the Linux runtime checkpoint](docs/linux-runtime-checkpoint.md). Delegate registration is complete and its Harness runtime check passed. The Atlas lab user and Harness secret are saved; real Atlas validation remains pending. See [the connection checkpoint](docs/harness-connection-checkpoint.md).
 - A native-executor repair candidate passes 62 focused local tests (61 passed, one existing skip) and packaging. See [the candidate checkpoint](docs/native-runtime-candidate.md). It has not been deployed to EC2 or tested with Atlas; exercise 003 stays inactive.
 
 The full lab is not yet a tested installation recipe. Each unverified stage remains explicitly pending.

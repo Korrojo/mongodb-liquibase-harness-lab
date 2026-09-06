@@ -1,6 +1,6 @@
 # Linux runtime build and acceptance checkpoint
 
-Verified September 6, 2026 on EC2 `i-0635332c43aa733a5`. The host was then stopped through the tested stop service and EC2 Stopped was confirmed; its disk and built image are retained. The image is built but **not registered with Harness**, and no Atlas connection or migration has run.
+Verified September 6, 2026 on EC2 `i-0635332c43aa733a5`. After the build, the host was stopped and its disk/image retained. It was subsequently restarted and registered with Harness under explicit user approval; Build 1 of the runtime check passed. See [the latest connection checkpoint](harness-connection-checkpoint.md). No Atlas connection or migration has run.
 
 ## Exact runtime
 
@@ -69,10 +69,10 @@ sudo docker run --rm --network none --entrypoint /opt/java/openjdk/bin/java \
 
 The driver currently reports that SLF4J is absent, so driver diagnostics use their fallback behavior. These checks do not prove successful authentication, all error paths, or native-process credential handling. Exercise 003 remains inactive.
 
-## Account setup prepared, not completed
+## Account setup completed after this build
 
-Atlas form: `liquibase_lab_user`, SCRAM, specific `readWrite` on `liquibase_lab`, collection left blank, access restricted to `Cluster0`; no broad built-in role selected. User must enter the username/password and submit. Harness Default Project has a prepared encrypted-text form named `atlas_password`; user must enter the same password and Save. Never put it in chat or this repository.
+The user saved Atlas `liquibase_lab_user`, SCRAM, specific `readWrite` on `liquibase_lab`, restricted to one cluster (prepared selection Cluster0). Harness Default Project now lists `atlas_password`. Both saved rows were verified; actual password matching and authentication remain untested. Never put the password in chat or this repository.
 
-Delegate registration is prepared in `infra/delegate/register-delegate.sh`: one named container, user 1001 from the image, 1 CPU/4 GiB limit, bounded logs, no published ports or Docker socket, and no automatic upgrader. The installer token must be in root-owned `/etc/mongodb-lab/delegate.env`, mode 0600, outside this repository. Action-time registration approval is pending; the saved runtime-check pipeline is unrun.
+Delegate registration used the settings in `infra/delegate/register-delegate.sh`: one named container, user 1001 from the image, 1 CPU/4 GiB limit, bounded logs, no published ports or Docker socket, and no automatic upgrader. The installer token is in root-owned `/etc/mongodb-lab/delegate.env`, mode 0600, outside this repository. The user explicitly approved registration; Harness shows Connected and the saved runtime check passed.
 
 Sources: [AWS Docker setup](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/create-container-image.html), [Harness custom images and upgrades](https://developer.harness.io/docs/platform/delegates/install-delegates/build-custom-delegate-images-with-third-party-tools/), [mongosh 2.10.0 release](https://github.com/mongodb-js/mongosh/releases/tag/v2.10.0).

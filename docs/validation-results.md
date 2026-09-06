@@ -19,7 +19,7 @@ EC2 deployment and management/shutdown tests PASS. Container build/probe and a d
 | Linux image build | PASS: custom image built on EC2, Java 17/Liquibase 4.33.0/mongosh 2.10.0 verified as user 1001 |
 | Container extension probe | PASS: one provider, required change types, three parsed exercises, visible-URL redaction |
 | Driver failure logging | PASS after correcting the CLI entry point: expected loopback connection failure, exit 1, synthetic password absent from captured logs |
-| Harness runtime check | NOT RUN |
+| Harness runtime check | PASS: Build 1, execution Zub2NiznRI-qvumpkMakhA, selected connected delegate mongodb-lab; Git 2.52.0, Java 17.0.19, Liquibase 4.33.0, mongosh 2.10.0 |
 | Atlas connectivity and credential handling | NOT RUN |
 | Initial/repeat/incremental migration | NOT RUN |
 | Native migration and rollback | NOT RUN |

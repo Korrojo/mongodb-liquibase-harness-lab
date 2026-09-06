@@ -1,6 +1,6 @@
 # Harness configuration
 
-`runtime-check.yaml` was copied from the saved, read-only `mongodb-lab-runtime-check` pipeline in Harness Default Project on September 6, 2026. The editor displayed Validated and Save was disabled. The complete YAML was exported through the editor clipboard; no pipeline changes or execution occurred.
+`runtime-check.yaml` was copied from the saved `mongodb-lab-runtime-check` pipeline in Harness Default Project on September 6, 2026. The editor displayed Validated and Save was disabled. The complete YAML was exported through the editor clipboard. After approved delegate registration, Build 1 succeeded on `mongodb-lab`; see [the connection checkpoint](../docs/harness-connection-checkpoint.md). The pipeline definition was unchanged.
 
 Expected baseline from the handoff: Custom stage, Bash Shell Script, On Delegate, selector `mongodb-lab`, timeout `2m`. Use the contents of `scripts/runtime-check.sh` for the tooling check after validating the actual schema.
 

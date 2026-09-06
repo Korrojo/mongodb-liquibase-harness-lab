@@ -10,7 +10,7 @@ Execution progress, September 6: a local starter repository now exists in this t
 
 The [console replication checkpoint](aws-console-checkpoint.md) records the exact reviewed selections, current resource IDs, created IAM role, launched EC2 instance, and tested automatic stop safeguard. It supplements this full runbook as execution progresses.
 
-The [native runtime candidate checkpoint](native-runtime-candidate.md) records a subsequent local credential-handling repair, 62 focused tests (61 passed, one existing skipped), packaging, and the exact next Linux validation commands. That candidate is not in the stopped EC2 image. Atlas credentials, delegate registration, and live migration checks remain pending.
+The [native runtime candidate checkpoint](native-runtime-candidate.md) records a subsequent local credential-handling repair, 62 focused tests (61 passed, one existing skipped), packaging, and the exact next Linux validation commands. That candidate is not in the registered EC2 image. The [Harness connection checkpoint](harness-connection-checkpoint.md) records the saved Atlas user and Harness secret, approved delegate registration, and successful first Harness runtime check. Repository read-key approval, locked-screen access testing, and live migration checks remain pending.
 
 ## 1. Feasibility and division of work
 

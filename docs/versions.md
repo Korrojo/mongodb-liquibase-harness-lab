@@ -1,6 +1,6 @@
 # Runtime inventory and compatibility findings
 
-Inspected September 6, 2026. The custom Linux image is built and its offline/container tests pass. Harness registration and live Atlas/migration tests remain pending. See [the Linux checkpoint](linux-runtime-checkpoint.md) for the final image and reproduction commands.
+Inspected September 6, 2026. The custom Linux image is built and its offline/container tests pass. Harness registration and its first runtime check now pass; live Atlas/migration tests remain pending. See [the Linux checkpoint](linux-runtime-checkpoint.md) for the final image and reproduction commands.
 
 | Component | Evidence | Status |
 |---|---|---|
