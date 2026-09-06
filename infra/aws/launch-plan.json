@@ -1,0 +1,51 @@
+{
+  "document_type": "console_review_plan_not_an_aws_api_request",
+  "status": "draft_not_submitted",
+  "region": "us-east-1",
+  "name": "mongodb-lab-delegate",
+  "instance_count": 1,
+  "instance_type_candidate": "m7i-flex.large",
+  "architecture": "x86_64",
+  "os_candidate": "Amazon Linux 2023",
+  "verified_ami_id": null,
+  "verified_vpc_id": null,
+  "verified_subnet_id": null,
+  "assign_public_ipv4": true,
+  "inbound_security_group_rules": [],
+  "key_pair": null,
+  "administration": "SSM Session Manager",
+  "role_name": "mongodb-lab-ec2-ssm",
+  "role_managed_policy_arns": [
+    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+  ],
+  "role_creation_and_attachment_confirmation": "pending_at_action_time",
+  "root_volume": {
+    "type": "gp3",
+    "size_gib": 30,
+    "encrypted": true,
+    "iops": 3000,
+    "throughput_mib_per_second": 125,
+    "delete_on_termination": true,
+    "verified_kms_key": null
+  },
+  "metadata": { "tokens": "required", "hop_limit": 1 },
+  "instance_initiated_shutdown_behavior": "stop",
+  "shutdown_safeguard": "boot_armed_host_timer_to_implement_and_test",
+  "shutdown_deadline": null,
+  "cleanup_date": null,
+  "spending_context": {
+    "handoff_budget_usd": "10-20",
+    "handoff_compute_usd_per_hour": 0.09576,
+    "current_account_price_verified": false,
+    "credits_verified": false
+  },
+  "prelaunch_checks": [
+    "Actual account and existing resource inventory",
+    "Harness entitlement and compatible delegate generation",
+    "Subnet internet gateway route, public IP, DNS, and outbound network",
+    "Current instance availability and price",
+    "No duplicate EC2, IAM, security group, or EBS resources",
+    "Role/profile reviewed and required confirmation completed",
+    "Shutdown behavior and safeguard deployment plan"
+  ]
+}

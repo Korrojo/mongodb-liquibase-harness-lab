@@ -1,0 +1,8 @@
+databaseChangeLog:
+  - changeSet:
+      id: lab-001-create-collection
+      author: Korrojo
+      comment: Create the collection for isolated synthetic lab fixtures.
+      changes:
+        - createCollection:
+            collectionName: lab_items

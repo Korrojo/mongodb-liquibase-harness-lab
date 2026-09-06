@@ -1,0 +1,14 @@
+# Inactive until explicitly included in the master in a later commit.
+databaseChangeLog:
+  - changeSet:
+      id: lab-002-create-index
+      author: Korrojo
+      comment: Add a named index; the rollback removes only this index.
+      changes:
+        - createIndex:
+            collectionName: lab_items
+            keys: '{ "sku": 1 }'
+            options: '{ "unique": true, "name": "lab_sku_unique" }'
+      rollback:
+        - runCommand:
+            command: '{ "dropIndexes": "lab_items", "index": "lab_sku_unique" }'

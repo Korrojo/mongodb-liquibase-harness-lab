@@ -1,0 +1,14 @@
+# Inactive. Resolve and test native-executor credential handling before inclusion.
+databaseChangeLog:
+  - changeSet:
+      id: lab-003-seed-data
+      author: Korrojo
+      comment: Exercise the Harness mongoFile change using only synthetic fixtures.
+      changes:
+        - mongoFile:
+            path: ../scripts/003-seed-data.js
+            relativeToChangelogFile: true
+      rollback:
+        - mongoFile:
+            path: ../scripts/003-remove-seed-data.js
+            relativeToChangelogFile: true
