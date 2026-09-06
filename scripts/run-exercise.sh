@@ -35,9 +35,11 @@ if [[ "$LAB_EXERCISE" == validation-failure ]]; then
   before=$(state 3)
   printf 'databaseChangeLog: [\n' > "$LAB_RUN_DIR/invalid.yaml"
   result=0
-  liquibase --changelog-file="$LAB_RUN_DIR/invalid.yaml" validate > "$LAB_RUN_DIR/invalid.log" 2>&1 || result=$?
+  liquibase --search-path="$LAB_RUN_DIR" --changelog-file=invalid.yaml validate > "$LAB_RUN_DIR/invalid.log" 2>&1 || result=$?
   test "$result" -ne 0
   java -cp "$LAB_PROBE_CP" LabFirstMigrationProbe sanitize "$LAB_RUN_DIR/invalid.log"
+  # A missing file, authentication error or unavailable service does not prove YAML validation.
+  grep -E 'while parsing|expected the node content' "$LAB_RUN_DIR/invalid.log" > /dev/null
   test "$before" = "$(state 3)"
   printf 'VALIDATION_FAILURE_BLOCKED_PASS: no update invoked; state unchanged\n'
   exit 0
