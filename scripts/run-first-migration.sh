@@ -15,6 +15,9 @@ java -cp "$LAB_PROBE_CP" LabFirstMigrationProbe preflight
 export LIQUIBASE_COMMAND_URL='mongodb+srv://cluster0.okiw7qi.mongodb.net/liquibase_lab?authSource=admin&retryWrites=true&w=majority&serverSelectionTimeoutMS=15000&connectTimeoutMS=10000'
 export LIQUIBASE_COMMAND_USERNAME=liquibase_lab_user
 export LIQUIBASE_COMMAND_PASSWORD="$ATLAS_PASSWORD"
+# Keep the scoped readWrite role. Tracking-index adjustment remains enabled;
+# only optional tracking-collection validators (which require collMod) are skipped.
+export LIQUIBASE_MONGODB_SUPPORTS_VALIDATOR=false
 run_liquibase() {
   local label=$1
   shift
