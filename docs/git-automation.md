@@ -2,7 +2,7 @@
 
 ## Verified scope — September 7, 2026
 
-PR events launch Harness checks, GitHub enforces the required status, and GitHub can assume the approved AWS role and start the existing delegate. The normal deployment pipeline is configured, but database-run approval and its live acceptance remain pending. Do not describe the complete merge-to-database workflow as finished yet.
+PR events launch Harness checks, GitHub enforces the required status, and GitHub can assume the approved AWS role and start the existing delegate. The normal deployment pipeline is configured, but the user has approved the baseline and incremental index runs; live acceptance is in progress. Do not describe the complete merge-to-database workflow as finished yet.
 
 | Component | Current state |
 |---|---|
@@ -11,7 +11,7 @@ PR events launch Harness checks, GitHub enforces the required status, and GitHub
 | Harness GitHub connection | `mongodblabgithub`, OAuth; connection test passed |
 | PR pipeline / trigger | `mongodblabprpreflight` / `mongodblabprevents`; enabled and tested |
 | AWS role | `mongodb-lab-github-wake`; installed and successfully assumed |
-| Normal deployment pipeline | `mongodblabmergeddeploy`; saved and validated, not yet executed |
+| Normal deployment pipeline | `mongodblabmergeddeploy`; saved and validated; baseline execution in progress |
 | Normal deployment trigger | `mongodblabmergedevents`; kept disabled pending database acceptance |
 | Shutdown | Lifecycle locking installed; active-lock drain test passed |
 | Atlas | Last verified baseline has three changesets; no database mutation by this automation work so far |
@@ -149,7 +149,7 @@ The guard requires the event SHA to be the current deployment-branch commit, ass
 
 Create [merged-trigger.yaml](../.harness/merged-trigger.yaml) **disabled**. It filters repository and exact protected branch, and maps `<+trigger.payload.after>` to `LAB_COMMIT`. Never attach this trigger to the exercise pipeline, which deliberately runs rollback lessons.
 
-**Approval boundary:** automatic approval review rejected the initial live deployment launch because the user had not explicitly authorized these database runs. Approval has been requested for a baseline no-op followed by one new non-unique `lab_fixture_lookup` index on `{labFixture: 1}` and no-op verification. Keep the trigger disabled and do not launch updates until that approval arrives. Three existing documents and the three applied migration files are preserved; no rollback, deletion or reset is included.
+**Approved acceptance scope:** the user explicitly approved a baseline no-op followed by one new non-unique `lab_fixture_lookup` index on `{labFixture: 1}` and no-op verification. The initial launch was held by automatic approval review; approval has now arrived and baseline execution has started. Keep the trigger disabled until the baseline passes. Three existing documents and the three applied migration files are preserved; no rollback, deletion or reset is included.
 
 ## 12. Acceptance evidence and remaining work
 
@@ -163,8 +163,8 @@ Create [merged-trigger.yaml](../.harness/merged-trigger.yaml) **disabled**. It f
 | Merge boundary tests | Real reviewed merge accepted; ten invalid metadata/status variants rejected locally |
 | Shutdown coordination | `DRAIN_WAIT_PASS`; stopped state verified after the simulated job released its lock |
 | Fresh cold event after OIDC fix | [Wake 34145422986](https://github.com/Korrojo/mongodb-liquibase-harness-lab/actions/runs/34145422986) and [Harness bQmqDX51TMey0ckSKK1kMQ](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines/mongodblabprpreflight/executions/bQmqDX51TMey0ckSKK1kMQ/pipeline) passed from a reopened PR; no manual rerun |
-| Normal database deployment | Pending explicit approval and live acceptance |
+| Normal database deployment | Approved; baseline execution `fkzUquhkSR-4zPOoTnao3w` in progress |
 
-After approval: verify the baseline no-op, enable the inspected merge trigger, merge the deployment configuration PR, and require an automatic no-op at that merge SHA. Then submit the new index as a separate PR, require its check, merge it normally and verify four history entries, the new index, unchanged fixtures and a repeat no-op. Test stale-event rejection and record the final instance state. Keep test PR2 unmerged. Update this checkpoint with actual execution links; do not infer success from a configured trigger.
+Verify the baseline no-op, enable the inspected merge trigger, merge the deployment configuration PR, and require an automatic no-op at that merge SHA. Then submit the new index as a separate PR, require its check, merge it normally and verify four history entries, the new index, unchanged fixtures and a repeat no-op. Test stale-event rejection and record the final instance state. Keep test PR2 unmerged. Update this checkpoint with actual execution links; do not infer success from a configured trigger.
 
 Sources: [Harness Git triggers](https://developer.harness.io/3k-docs/platform/triggers/triggering-pipelines/), [Wait step](https://developer.harness.io/docs/continuous-delivery/x-platform-cd-features/cd-steps/utilities/wait-step/), [GitHub protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches), [GitHub OIDC](https://docs.github.com/en/actions/reference/security/oidc), [AWS OIDC roles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html).
