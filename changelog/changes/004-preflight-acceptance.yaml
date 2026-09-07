@@ -1,1 +1,12 @@
-databaseChangeLog: [
+databaseChangeLog:
+  - changeSet:
+      id: lab-004-preflight-acceptance
+      author: Korrojo
+      changes:
+        - createIndex:
+            collectionName: lab_items
+            keys: '{ "labFixture": 1 }'
+            options: '{ "name": "lab_fixture_lookup" }'
+      rollback:
+        - runCommand:
+            command: '{ "dropIndexes": "lab_items", "index": "lab_fixture_lookup" }'
