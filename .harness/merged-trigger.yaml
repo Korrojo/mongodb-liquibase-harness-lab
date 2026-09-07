@@ -1,0 +1,31 @@
+trigger:
+  name: mongodb-lab-merged-events
+  identifier: mongodblabmergedevents
+  enabled: false
+  orgIdentifier: default
+  projectIdentifier: default_project
+  pipelineIdentifier: mongodblabmergeddeploy
+  source:
+    type: Webhook
+    spec:
+      type: Github
+      spec:
+        type: Push
+        spec:
+          connectorRef: mongodblabgithub
+          payloadConditions:
+            - key: <+trigger.payload.ref>
+              operator: Equals
+              value: refs/heads/setup/lab-foundation
+            - key: <+trigger.payload.repository.full_name>
+              operator: Equals
+              value: Korrojo/mongodb-liquibase-harness-lab
+          headerConditions: []
+          actions: []
+  inputYaml: |
+    pipeline:
+      identifier: mongodblabmergeddeploy
+      variables:
+        - name: LAB_COMMIT
+          type: String
+          value: <+trigger.payload.after>

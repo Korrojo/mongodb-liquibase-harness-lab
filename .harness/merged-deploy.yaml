@@ -1,0 +1,58 @@
+pipeline:
+  name: mongodb-lab-merged-deploy
+  identifier: mongodblabmergeddeploy
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  variables:
+    - name: LAB_COMMIT
+      type: String
+      value: <+input>
+  stages:
+    - stage:
+        name: Apply reviewed migration
+        identifier: Apply_reviewed_migration
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: Wait
+                  name: Allow delegate startup
+                  identifier: Allow_delegate_startup
+                  spec:
+                    duration: 5m
+              - step:
+                  type: ShellScript
+                  name: Deploy reviewed commit
+                  identifier: Deploy_reviewed_commit
+                  spec:
+                    shell: Bash
+                    executionTarget: {}
+                    delegateSelectors:
+                      - mongodb-lab
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          set +x
+                          set -Eeuo pipefail
+                          sha256sum --check <<'DEPLOY_CHECKSUMS'
+                          82ea6a377b9f83e5e713987887f85c9b5168a3997fbea97b4474edbee7edf638  /opt/mongodb-lab/probes/LabDeployGuard.class
+                          5932828b79078773e5a4a20f4fd2b59b7ac14c7d1b58b874159c77bcb9efadb6  /opt/mongodb-lab/probes/LabDeploymentProbe.class
+                          ebdc28a850dceb9d19afab1309736e93bd819ab8e44f0cfe22682bac1d33b9ef  /opt/mongodb-lab/probes/run-deployment.sh
+                          DEPLOY_CHECKSUMS
+                          timeout --signal=TERM --kill-after=10s 8m bash /opt/mongodb-lab/probes/run-deployment.sh
+                    environmentVariables:
+                      - name: LAB_COMMIT
+                        type: String
+                        value: <+pipeline.variables.LAB_COMMIT>
+                      - name: ATLAS_PASSWORD
+                        type: String
+                        value: <+secrets.getValue("atlas_password")>
+                      - name: LAB_GITHUB_TOKEN
+                        type: String
+                        value: <+secrets.getValue("harnessoauthaccesstoken_github_1788787327610")>
+                    outputVariables: []
+                  timeout: 10m
+        tags: {}
