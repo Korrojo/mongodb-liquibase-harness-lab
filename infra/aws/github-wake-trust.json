@@ -10,7 +10,7 @@
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:Korrojo/mongodb-liquibase-harness-lab:ref:refs/heads/setup/lab-foundation"
+          "token.actions.githubusercontent.com:sub": "repo:Korrojo@133557745/mongodb-liquibase-harness-lab@1359386091:ref:refs/heads/setup/lab-foundation"
         }
       }
     }
