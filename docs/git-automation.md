@@ -2,7 +2,7 @@
 
 ## Verified scope — September 7, 2026
 
-PR events launch Harness checks, GitHub enforces the required status, and GitHub can assume the approved AWS role and start the existing delegate. The normal deployment pipeline is configured, but the user has approved the baseline and incremental index runs; live acceptance is in progress. Do not describe the complete merge-to-database workflow as finished yet.
+PR events launch Harness checks, GitHub enforces the required status, and GitHub starts the existing EC2 delegate through its scoped AWS role. Normal merges trigger a separate Harness deployment that verifies the reviewed revision, applies Liquibase changes and proves the repeat is a no-op. See the acceptance table below for actual executions and the [daily workflow](daily-workflow.md) for later use.
 
 | Component | Current state |
 |---|---|
@@ -11,10 +11,10 @@ PR events launch Harness checks, GitHub enforces the required status, and GitHub
 | Harness GitHub connection | `mongodblabgithub`, OAuth; connection test passed |
 | PR pipeline / trigger | `mongodblabprpreflight` / `mongodblabprevents`; enabled and tested |
 | AWS role | `mongodb-lab-github-wake`; installed and successfully assumed |
-| Normal deployment pipeline | `mongodblabmergeddeploy`; saved and validated; baseline execution in progress |
-| Normal deployment trigger | `mongodblabmergedevents`; kept disabled pending database acceptance |
+| Normal deployment pipeline | `mongodblabmergeddeploy`; enabled and tested with a protected-merge webhook |
+| Normal deployment trigger | `mongodblabmergedevents`; enabled; exact repository and protected-branch filters |
 | Shutdown | Lifecycle locking installed; active-lock drain test passed |
-| Atlas | Last verified baseline has three changesets; no database mutation by this automation work so far |
+| Atlas | Four executed changesets, three original documents, new fixture lookup index; repeat no-op passed |
 
 GitHub pull requests are the equivalent of the GitLab merge requests discussed earlier. This lab stays on GitHub.
 
@@ -125,7 +125,7 @@ The role may start only the existing instance and describe EC2 startup state in 
 
 [Wake workflow](../.github/workflows/wake-delegate.yml) uses a pinned official AWS action and runs trusted default-branch code. Its PR path rejects fork heads and never checks out candidate code. `pull_request_target` requires the workflow on the default branch; bootstrap PR1 was merged only after its required Harness check passed.
 
-A push on the deployment branch also wakes the host. EC2 health is not proof that the Harness delegate is immediately eligible; the Harness wait/retry remains necessary. The current follow-up branch adds ten minutes of availability observation so a stop at the old boot's deadline can be followed by another start. That follow-up is not active until its protected merge.
+A push on the deployment branch also wakes the host. EC2 health is not proof that the Harness delegate is immediately eligible; the Harness wait/retry remains necessary. The merged workflow observes availability for ten minutes so a stop at the old boot's deadline can be followed by another start. This is independent of the shorter Harness startup wait.
 
 ## 10. Coordinate shutdown with running jobs
 
@@ -149,9 +149,9 @@ The guard requires the event SHA to be the current deployment-branch commit, ass
 
 Create [merged-trigger.yaml](../.harness/merged-trigger.yaml) **disabled**. It filters repository and exact protected branch, and maps `<+trigger.payload.after>` to `LAB_COMMIT`. Never attach this trigger to the exercise pipeline, which deliberately runs rollback lessons.
 
-**Approved acceptance scope:** the user explicitly approved a baseline no-op followed by one new non-unique `lab_fixture_lookup` index on `{labFixture: 1}` and no-op verification. The initial launch was held by automatic approval review; approval has now arrived and baseline execution has started. Keep the trigger disabled until the baseline passes. Three existing documents and the three applied migration files are preserved; no rollback, deletion or reset is included.
+**Approved acceptance scope:** the user authorized baseline validation/update/repeat and one new non-unique `lab_fixture_lookup` index on `{labFixture: 1}`. Baseline acceptance passed before trigger activation. The three original migration files and three documents are preserved. No rollback, deletion or reset is included.
 
-## 12. Acceptance evidence and remaining work
+## 12. Acceptance evidence
 
 | Test | Evidence / status |
 |---|---|
@@ -163,8 +163,11 @@ Create [merged-trigger.yaml](../.harness/merged-trigger.yaml) **disabled**. It f
 | Merge boundary tests | Real reviewed merge accepted; ten invalid metadata/status variants rejected locally |
 | Shutdown coordination | `DRAIN_WAIT_PASS`; stopped state verified after the simulated job released its lock |
 | Fresh cold event after OIDC fix | [Wake 34145422986](https://github.com/Korrojo/mongodb-liquibase-harness-lab/actions/runs/34145422986) and [Harness bQmqDX51TMey0ckSKK1kMQ](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines/mongodblabprpreflight/executions/bQmqDX51TMey0ckSKK1kMQ/pipeline) passed from a reopened PR; no manual rerun |
-| Normal database deployment | Approved; baseline execution `fkzUquhkSR-4zPOoTnao3w` in progress |
+| Approved manual baseline | [fkzUquhkSR-4zPOoTnao3w](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines/mongodblabmergeddeploy/executions/fkzUquhkSR-4zPOoTnao3w/pipeline): passed on `80764471f93ac582176a48058f9dde9e6e53339f`; history 3, documents 3, identical before/after fingerprint |
+| Stale revision live rejection | [2G-UHiS1ReWrF4JDalny0g](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines/mongodblabmergeddeploy/executions/2G-UHiS1ReWrF4JDalny0g/pipeline): expected failure, `DEPLOYMENT_REJECTED` before Atlas work for obsolete `8076447` |
+| New index through PR4 merge | [ZJIXg-GeSCeqt9khOybrJQ](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines/mongodblabmergeddeploy/executions/ZJIXg-GeSCeqt9khOybrJQ/pipeline): passed on `fc78e57a335426629a80ffdd74601c0c035db7c0`; one changeset applied, history 4, documents 3, repeat ran 0 |
+| First automatic merged deployment | [cCfVuIfSQnGVAoew6fOTiw](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines/mongodblabmergeddeploy/executions/cCfVuIfSQnGVAoew6fOTiw/pipeline): passed on PR3 merge `221799a1786b2ae6225be592a89aa0b02cf21983`; repeat no-op |
 
-Verify the baseline no-op, enable the inspected merge trigger, merge the deployment configuration PR, and require an automatic no-op at that merge SHA. Then submit the new index as a separate PR, require its check, merge it normally and verify four history entries, the new index, unchanged fixtures and a repeat no-op. Test stale-event rejection and record the final instance state. Keep test PR2 unmerged. Update this checkpoint with actual execution links; do not infer success from a configured trigger.
+For replication, first prove a baseline no-op, then enable the inspected trigger. Use a separate PR for a new migration, require its exact-head check, merge normally and inspect the automatic deployment result. Keep test PR2 closed and unmerged; it only demonstrated rejection and recovery. Do not infer database success from a configured trigger or green PR check.
 
 Sources: [Harness Git triggers](https://developer.harness.io/3k-docs/platform/triggers/triggering-pipelines/), [Wait step](https://developer.harness.io/docs/continuous-delivery/x-platform-cd-features/cd-steps/utilities/wait-step/), [GitHub protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches), [GitHub OIDC](https://docs.github.com/en/actions/reference/security/oidc), [AWS OIDC roles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html).

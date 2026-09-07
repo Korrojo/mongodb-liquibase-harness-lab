@@ -2,7 +2,7 @@
 
 **Verified execution edition, September 6, 2026.** The Atlas connection, initial and incremental migrations, native JavaScript, repeat execution, scoped rollbacks, invalid-YAML rejection and overlapping-run exclusion have passed on the personal lab. The final stop/start recovery test also passed; EC2 was left Stopped. See [validation-results.md](validation-results.md).
 
-**Automation remains incomplete.** The results above came from manually launched Harness pipelines. PR checks, Git event triggers, enforced merge protection, and delegate wake/stop coordination are tracked in the [Git automation checkpoint](git-automation.md). Local preparation is not a successful live trigger.
+**Git automation update, September 7:** PR checks, protected merges, EC2 wake/shutdown coordination and post-merge deployment are covered in the [automation guide](git-automation.md). For everyday work, use the [short operating procedure](daily-workflow.md). The chapters below retain the earlier staged migration lesson. After changeset 004, use normal deployment verification rather than the phase-three manual check.
 
 This is the working procedure derived from actual execution, including the fixes needed to make it pass. The supplied handoff is historical reference, not authorization or proof that a step succeeded. A complete installation in a second account has not been replayed. The infrastructure build uses pinned inputs, but a future build can produce different image/JAR hashes because of build metadata and package availability.
 
@@ -13,7 +13,7 @@ The Mac mini manages the project and accessible browsers. Harness sends work to 
 | Place | Work performed there |
 |---|---|
 | Phone, ChatGPT Remote | Continue this same task, review progress, give decisions and supported approvals |
-| Mac mini, this task | Edit/review files, publish the private setup branch, operate the signed-in browsers |
+| Mac mini, this task | Edit/review files, publish reviewed feature branches, operate the signed-in browsers |
 | MacBook, Screen Sharing over Tailscale | Complete desktop login, MFA, secret entry or OS permission prompts when needed |
 | AWS Console in the mini's browser | Create/reuse resources; inspect, start, connect to and stop the one EC2 instance |
 | AWS Session Manager terminal | Linux host administration, Docker builds and helper installation |
@@ -30,8 +30,8 @@ Before relying on the phone alone, complete this short acceptance test: from the
 
 | Item | Value |
 |---|---|
-| Private Git repository | [Korrojo/mongodb-liquibase-harness-lab](https://github.com/Korrojo/mongodb-liquibase-harness-lab/tree/setup/lab-foundation) |
-| Working branch | `setup/lab-foundation`; never push lab changes directly to `main` |
+| Public Git repository | [Korrojo/mongodb-liquibase-harness-lab](https://github.com/Korrojo/mongodb-liquibase-harness-lab/tree/setup/lab-foundation) |
+| Working branch | `setup/lab-foundation` is protected; use feature branches and PRs |
 | AWS | Learning-account `224772450208`, `us-east-1`, user `lab-admin` |
 | EC2 | `i-0635332c43aa733a5`, name `mongodb-lab-delegate` |
 | Harness | Account `7WPs0XUoT4CnMpX3j28V4g`, organization `default`, project `default_project` |
@@ -49,7 +49,7 @@ These are personal-lab identifiers embedded in the scripts and YAML. A different
 
 ## 3. Choose the correct starting point
 
-- **Resume this completed lab:** use section 4, then run `verify-final` from section 9. Do not run `index-cycle` or `native-cycle` again against phase 3: their guards intentionally require the previous phase.
+- **Resume the current automated lab:** follow [daily-workflow.md](daily-workflow.md). The section 9 `verify-final` check applies only to the historical three-changeset stage. Do not run `index-cycle` or `native-cycle` again against phase 3: their guards intentionally require the previous phase.
 - **Repeat the migration lessons:** use the existing infrastructure and a confirmed empty, disposable `liquibase_lab`, then follow sections 6–10 in order. Clearing the existing database would erase the retained evidence and needs a deliberate reset decision; it has not been done by this task.
 - **Rebuild the EC2 runtime:** follow [build-and-install.md](build-and-install.md), then sections 5–10. Preserve the old host/volume until the replacement has passed verification. The build instructions are for the recorded personal accounts; they do not promise a byte-identical new image.
 
