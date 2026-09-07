@@ -1,37 +1,39 @@
 # GitHub PR to Harness automation — implementation checkpoint
 
-**September 7, 2026: preparation only; no webhook or automatic deployment is enabled.**
+**September 7, 2026: public repository, enforced branch protection and a successful manual PR check; webhook and automatic deployment acceptance are still pending.**
 
 The original handoff called for manual runs first and a protected-branch trigger after validation. The manual migration acceptance passed on September 6. This page tracks the remaining automation separately. GitHub pull requests are the lab equivalent of GitLab merge requests; the repository is not being moved to GitLab.
 
-## 1. Complete the current account handoffs
+## 1. Verified account configuration
 
-1. In the prepared GitHub tab, complete **Confirm access** for `Korrojo`. Use the passkey, GitHub Mobile, or password option on GitHub itself. The tab is at `https://github.com/settings/apps/new`. No GitHub App has been created yet.
-2. In the AWS tab, sign in to account `224772450208` as `lab-admin`, including MFA if requested. The earlier EC2 page is stale: AWS reported that the console session expired. The last verified shutdown remains the September 6 checkpoint, not a fresh observation.
-3. Decide whether to upgrade the personal GitHub account to Pro. The private repository's branch-rule page reports that rules will not be enforced under the current plan. GitHub documents Pro support for protected private branches and a published price of $4/month, before applicable tax. A purchase has not been authorized or made. Keeping the current plan still allows the trigger demonstration, but cannot be described as enforced merge protection.
-4. After account access is restored, review the actual GitHub App installation and narrowly scoped AWS role before granting the new access. The authentication handoffs above unlock those forms; they are not proof the integrations are installed.
+On September 7, the user selected the free GitHub plan and authorized making this lab repository public if needed for branch protection. GitHub returned HTTP 403 for protection on the private repository. Before publication, Gitleaks 8.30.1 scanned all 23 reachable commits (318,670 bytes) with no leaks reported; manual inspection classified pattern matches as test canaries or environment references. The repository was then made public. Lab resource identifiers and documentation are consequently public too.
 
-Do not paste credentials into this task, YAML, Git, or screenshots. The existing Atlas secret and read-only Git deploy key do not need to be replaced for this work. The broad Harness OAuth request was cancelled because it requested access to public and private repositories across the account.
+GitHub protection on `setup/lab-foundation` now requires `mongodb-lab/pr-preflight`, requires the branch to be up to date, applies to administrators, blocks force pushes and deletion, and requires conversation resolution. No second-person review is required in this one-person lab. No GitHub Pro purchase is needed.
 
-## 2. Review the intended access
+The user completed Harness GitHub **OAuth** authorization. The connector `mongodb-lab-github` / `mongodblabgithub` is saved and its connection test passed. It uses repository URL `https://github.com/Korrojo/mongodb-liquibase-harness-lab`, HTTP/OAuth authentication, OAuth API access, and connectivity through the Harness Platform. The earlier GitHub App proposal was abandoned; do not create another integration or request an App key. A repository URL does not narrow the underlying OAuth grant.
 
-| Integration | Intended scope | Purpose |
-|---|---|---|
-| GitHub App for Harness | Only `Korrojo/mongodb-liquibase-harness-lab`; contents, metadata and PR information read; commit statuses and repository webhooks write | Read code/event information, receive PR and push events, report check results |
-| AWS role `mongodb-lab-github-wake` | Start `i-0635332c43aa733a5` only; read EC2 startup status in `us-east-1` | Wake the existing delegate when a Git event arrives |
-| Existing Atlas secret | Deployment pipeline only | Apply reviewed migrations to `liquibase_lab` |
+## 2. Remaining AWS access
 
-The proposed AWS policy and trust document are [github-wake-policy.json](../infra/aws/github-wake-policy.json) and [github-wake-trust.json](../infra/aws/github-wake-trust.json). They are local files, not installed IAM policies. They allow no instance creation, stop/termination, SSM session, database access, or IAM administration. EC2 describe APIs require `Resource: "*"`; the read operations are restricted to `us-east-1`. The trust is limited to the lab repository's PR subject and existing default branch, with the STS audience. The GitHub OIDC provider must first be inspected and reused or created deliberately.
+The proposed role `mongodb-lab-github-wake` is not installed. Its [permission policy](../infra/aws/github-wake-policy.json) permits starting only `i-0635332c43aa733a5` and reading EC2 startup state in `us-east-1`. It grants no instance creation, termination, SSM, Atlas or IAM administration. Read-only discovery in authenticated AWS CloudShell returned no existing OIDC providers.
 
-The exact GitHub App permissions must be tested against Harness connector and webhook creation. Harness's general App guide includes content and PR write permissions for additional features; this lab should start with read permissions for those features and widen only if a demonstrated required operation needs it. A repository URL in a connector alone does not restrict the underlying credential.
+The [trust document](../infra/aws/github-wake-trust.json) is provisional until the actual GitHub OIDC subject is verified. Trust must match the protected default branch only. Do not use a wildcard repository subject or permit candidate PR workflows to obtain AWS credentials. GitHub now documents immutable owner/repository IDs in newer subject formats; this repository's settings return an ID-bearing `sub_claim_prefix` despite `use_immutable_subject: false`. Resolve that discrepancy by verifying the token's selected non-secret claims in a trusted workflow before installing the final trust. Never print the token itself.
 
-## 3. Configure the connection after approval
+The intended wake workflow uses trusted default-branch code and must never check out or execute proposed PR code. Availability and safe shutdown remain pending; starting an instance is not proof that Harness can immediately assign work to it.
 
-1. Register the GitHub App using the supported Harness GitHub App flow. Set the homepage to `https://harness.io/` and disable the App's own webhook receiver; Harness creates repository webhooks separately. Harness's guide requires an App installable on any account. This does not make the lab repository public, but the App registration itself is public.
-2. Install it on **Only select repositories**, selecting the one lab repository. Record App ID and installation ID, not a private key value.
-3. Generate its private key, convert to the required PKCS#8 format, and save it through Harness's encrypted file-secret UI. Keep the local key outside Git with restrictive permissions. Do not output it to a terminal transcript.
-4. Finish the prepared project connector `mongodb-lab-github` / `mongodblabgithub`: repository URL `https://github.com/Korrojo/mongodb-liquibase-harness-lab`, HTTP, GitHub App authentication and API access. Use Harness connectivity for GitHub API operations if available so webhook setup does not depend on a running delegate. Require the connection test to pass and read back the saved connector.
-5. Separately verify how this account reports statuses from a **Custom** stage. Do not assume CI-stage automatic status reporting also applies to the existing Custom-stage pipelines. If a dedicated status publisher is required, it must use trusted installed code and the App credential, never code taken from a PR. Never publish a successful check before every required validation has passed.
+## 3. Replicate the saved PR pipeline
+
+1. In Harness project settings, create a GitHub connector using the repository URL, HTTP/OAuth authentication and OAuth API access. Complete authorization on GitHub and require the connection test to pass. This lab already has that connector; reuse it.
+2. Start the existing EC2 instance and wait for health checks and the Harness delegate to become available. Connect through AWS Console → EC2 → Connect → Session Manager. Retain the budget timer while doing installation work.
+3. Fetch a reviewed exact commit containing the checker, runner and installer onto the host. Run `infra/delegate/install-pr-probes.sh` as root. It compiles Java 17 classes on the host, installs them into the delegate and checks ownership and its self-test. The delegate image contains a JRE, so Java source-file launching fails there because `jdk.compiler` is absent.
+4. Record the installed class hashes and compare them with [pr-probes.sha256](../infra/delegate/pr-probes.sha256). If compilation produces different hashes, inspect the source, compiler and outputs; do not simply bypass the checksum check.
+5. Create the inline Custom-stage pipeline from [pr-preflight.yaml](../.harness/pr-preflight.yaml). Keep `LAB_COMMIT` and `LAB_PR_NUMBER` as runtime inputs. Replace the OAuth secret reference with the actual managed reference in the replicating account. Never paste its value into YAML or Git.
+6. Run against an open, same-repository PR targeting `setup/lab-foundation`, using its exact head SHA and PR number. This pipeline receives no Atlas password. It executes the installed trusted runner, fetches exact base/head commits, validates files without executing candidate scripts, and publishes GitHub pending then success/failure on the tested head.
+7. Inspect the Harness log and independently read the GitHub commit status. A green Harness run without the exact GitHub status is insufficient for branch protection.
+8. Configure the required GitHub status and branch protection described above. Trigger creation and automatic-event acceptance below remain unfinished in this checkpoint.
+
+**Verified manual run:** [Harness execution 72SEZC7iRpKh6tTpFEWFUQ](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines/mongodblabprpreflight/executions/72SEZC7iRpKh6tTpFEWFUQ/pipeline), September 7 at 09:54:44 AM Eastern, succeeded in 14 seconds for PR #1, head `831f14f58f052b1ed6b972eafc51f8ad259ae33b`, base `9827c55cdffeb318c0ab5d603648bda22aab57e4`. GitHub independently reported `mongodb-lab/pr-preflight: success` with that Harness execution link. No Atlas access was used.
+
+The preceding two runs exposed and resolved a JRE/source-launch incompatibility and Harness's legacy `/ng/#/account/...` execution-link format. The runner now accepts both observed account-specific URL forms, and reports controlled phase names without printing credentials or API response bodies.
 
 ## 4. Install and verify the trusted PR preflight
 
@@ -58,7 +60,7 @@ python3 lab/scripts/test-pr-preflight.py \
 
 The tests use temporary changelog copies and no database credentials. They do not alter applied migrations or the retained Atlas evidence.
 
-**Local result on September 7:** Java 17 compilation and all 13 preflight scenarios passed. Both proposed IAM JSON documents parsed successfully and the repository whitespace check passed. No Harness execution has used this checker yet.
+**Local result on September 7:** Java 17 compilation and all 13 preflight scenarios passed. Both proposed IAM JSON documents parsed successfully and the repository whitespace check passed. The manual Harness execution recorded above also passed with the installed checker.
 
 Before use in Harness, install the reviewed compiled checker with the trusted runtime on the delegate. The PR pipeline must execute that installed version, not compile or run a checker from the candidate PR. Fetch an exact candidate commit and an exact base commit into separate per-run directories. Compare the candidate to the current target-branch base, and ensure a base-branch change invalidates or reruns the PR result. Use no `atlas_password` reference in this pipeline. A passing result must be attached to the exact PR head SHA, with its Harness execution link.
 
@@ -83,7 +85,7 @@ Retain `setup/lab-foundation` as the deployment branch unless deliberately renam
 
 Create the triggers disabled first and inspect their saved YAML and runtime-input mapping. Filter both the repository and target branch. Configure the GitHub repository webhook through the tested connector and verify its delivery history. Once the first real PR check has been published, require that exact status context in branch protection, apply it to administrators, and require the branch to be up to date. For a one-person lab, do not require an additional human review that the PR author cannot supply. If the GitHub plan cannot enforce these rules, record that gap explicitly.
 
-## 7. Acceptance sequence — all pending live execution
+## 7. Automatic-event acceptance sequence — pending live execution
 
 1. Start with the delegate stopped. Open a harmless PR and prove the Git event wakes the existing instance, starts the intended Harness validation and attaches the result to the correct commit.
 2. Submit malformed YAML in a new migration. Require failed PR status and no Atlas changes. If protection is enabled, verify GitHub blocks the merge.
@@ -92,7 +94,7 @@ Create the triggers disabled first and inspect their saved YAML and runtime-inpu
 5. Merge a reviewed new synthetic migration. Confirm one expected deployment uses the merge/push SHA, changes only the lab target, and records the expected additional history entry. Avoid modifying the three existing applied migrations.
 6. Redeliver the event or repeat the accepted deployment. Require a no-op with unchanged data/history. Test overlap exclusion and stale-event handling.
 7. Close an unmerged PR and push an unrelated branch. Require no deployment.
-8. Exercise safe stop while work is active, restart from a later event, and verify no password or App key appears in execution logs.
+8. Exercise safe stop while work is active, restart from a later event, and verify no password or OAuth token appears in execution logs.
 9. Record the actual PR, delivery, execution links, commit SHAs, state assertions and instance state. Update the main runbook and minimal diagram only after these results exist.
 
-Sources: [Harness GitHub App setup](https://developer.harness.io/docs/platform/connectors/code-repositories/git-hub-app-support/), [Harness Git event triggers](https://developer.harness.io/3k-docs/platform/triggers/triggering-pipelines/), [GitHub protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches), [GitHub plans](https://docs.github.com/en/get-started/learning-about-github/githubs-plans), [published Pro pricing](https://docs.github.com/en/get-started/learning-about-github/faq-about-changes-to-githubs-plans), [AWS GitHub OIDC trust](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html).
+Sources: [Harness Git event triggers](https://developer.harness.io/3k-docs/platform/triggers/triggering-pipelines/), [GitHub protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches), [GitHub OIDC reference](https://docs.github.com/en/actions/reference/security/oidc), [AWS GitHub OIDC trust](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-idp_oidc.html).

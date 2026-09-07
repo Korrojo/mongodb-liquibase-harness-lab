@@ -51,7 +51,7 @@ pipeline:
                           trap 'exit 143' TERM
                           sha256sum --check <<'PR_CHECKSUMS'
                           b2e9fc61b2517fc19716ccc2c072f4c3af552adaf260cd4f43d301eb2112c093  /opt/mongodb-lab/probes/LabChangelogCheck.class
-                          c48f2f794d54d36ebdb01909bae1e076c21b182b5a96aadc03fd33421c2c2679  /opt/mongodb-lab/probes/LabPrPipeline.class
+                          7a7c8ecc556258cdce5f2fc45f865d43b47c70e2b5fd6eacb4d7b405a1cd47e3  /opt/mongodb-lab/probes/LabPrPipeline.class
                           PR_CHECKSUMS
                           timeout --signal=TERM --kill-after=10s 5m java -Xmx256m -cp '/opt/mongodb-lab/lib/*:/opt/mongodb-lab/probes' LabPrPipeline
                     environmentVariables:
