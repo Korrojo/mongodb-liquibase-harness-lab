@@ -2,6 +2,8 @@
 
 **Verified execution edition, September 6, 2026.** The Atlas connection, initial and incremental migrations, native JavaScript, repeat execution, scoped rollbacks, invalid-YAML rejection and overlapping-run exclusion have passed on the personal lab. The final stop/start recovery test also passed; EC2 was left Stopped. See [validation-results.md](validation-results.md).
 
+**Automation remains incomplete.** The results above came from manually launched Harness pipelines. PR checks, Git event triggers, enforced merge protection, and delegate wake/stop coordination are tracked in the [Git automation checkpoint](git-automation.md). Local preparation is not a successful live trigger.
+
 This is the working procedure derived from actual execution, including the fixes needed to make it pass. The supplied handoff is historical reference, not authorization or proof that a step succeeded. A complete installation in a second account has not been replayed. The infrastructure build uses pinned inputs, but a future build can produce different image/JAR hashes because of build metadata and package availability.
 
 ## 1. How we work remotely

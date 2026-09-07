@@ -64,3 +64,10 @@ Observed phase-2 fingerprint: `c771918bc797a40404c2c445de4203c086f2a8d882bc22ffa
 ## Remaining limits
 
 No phone-after-screen-lock acceptance, fresh-account replay, managed Atlas backup, restricted Atlas network allowlist, multi-delegate distributed-lock test, arbitrary-crash recovery or production suitability claim. Existing Atlas broad access rules were unchanged. The real lab user's permission boundary restricts writes to `liquibase_lab`; it does not allow a full cross-database before/after inventory.
+
+## September 7 — PR automation checkpoint
+
+- Public repository and enforced default-branch protection verified through GitHub API. Required context `mongodb-lab/pr-preflight`, strict up-to-date and administrator enforcement enabled.
+- [Manual PR check](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines/mongodblabprpreflight/executions/72SEZC7iRpKh6tTpFEWFUQ/pipeline) succeeded for PR1/head `831f14f58f052b1ed6b972eafc51f8ad259ae33b`; GitHub independently reported success on that exact SHA. No Atlas access. Local checker acceptance: 13 scenarios passed.
+- [OIDC identity diagnostic](https://github.com/Korrojo/mongodb-liquibase-harness-lab/actions/runs/34130998996) succeeded at 14:05 UTC for `fcadbb3b31568a5cbae81575dbcfb7d11fee2fd7`. Verified ID-bearing repository subject, issuer and STS audience; no AWS credentials requested and no token printed.
+- These results do not demonstrate automatic Harness webhook execution, AWS role assumption, stopped-delegate startup, protected merge deployment, or safe shutdown. Those tests remain pending.

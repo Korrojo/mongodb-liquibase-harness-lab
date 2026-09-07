@@ -1,0 +1,39 @@
+trigger:
+  name: mongodb-lab-pr-events
+  identifier: mongodblabprevents
+  enabled: true
+  encryptedWebhookSecretIdentifier: ""
+  description: ""
+  tags: {}
+  orgIdentifier: default
+  stagesToExecute: []
+  projectIdentifier: default_project
+  pipelineIdentifier: mongodblabprpreflight
+  source:
+    type: Webhook
+    spec:
+      type: Github
+      spec:
+        type: PullRequest
+        spec:
+          connectorRef: mongodblabgithub
+          autoAbortPreviousExecutions: false
+          payloadConditions:
+            - key: targetBranch
+              operator: Equals
+              value: setup/lab-foundation
+            - key: <+trigger.payload.pull_request.head.repo.full_name>
+              operator: Equals
+              value: Korrojo/mongodb-liquibase-harness-lab
+          headerConditions: []
+          actions: [Open, Reopen, Synchronize]
+  inputYaml: |
+    pipeline:
+      identifier: mongodblabprpreflight
+      variables:
+        - name: LAB_COMMIT
+          type: String
+          value: <+trigger.payload.pull_request.head.sha>
+        - name: LAB_PR_NUMBER
+          type: String
+          value: <+trigger.payload.number>
