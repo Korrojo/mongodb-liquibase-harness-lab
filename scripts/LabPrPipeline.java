@@ -18,6 +18,7 @@ class LabPrPipeline {
     private static final String CONTEXT = "mongodb-lab/pr-preflight";
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final HttpClient HTTP = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
+    private static String phase = "environment";
 
     private static void require(boolean condition) {
         if (!condition) throw new IllegalArgumentException("Lab PR boundary check failed");
@@ -40,6 +41,9 @@ class LabPrPipeline {
         if (payload == null) request.GET();
         else request.header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(JSON.writeValueAsString(payload)));
         var response = HTTP.send(request.build(), HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != (payload == null ? 200 : 201)) {
+            System.err.println("GITHUB_API_HTTP=" + response.statusCode());
+        }
         require(response.statusCode() == (payload == null ? 200 : 201));
         return JSON.readTree(response.body());
     }
@@ -55,9 +59,14 @@ class LabPrPipeline {
         return base;
     }
 
+    private static void checkExecutionUrl(String url) {
+        require(url.startsWith("https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/")
+                || url.startsWith("https://app.harness.io/ng/#/account/7WPs0XUoT4CnMpX3j28V4g/"));
+    }
+
     private static void status(String sha, String state) throws Exception {
         String url = env("LAB_EXECUTION_URL");
-        require(url.startsWith("https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/"));
+        checkExecutionUrl(url);
         ObjectNode payload = JSON.createObjectNode();
         payload.put("state", state).put("context", CONTEXT).put("target_url", url);
         payload.put("description", switch (state) {
@@ -105,7 +114,13 @@ class LabPrPipeline {
             try { baseCommit(changed, sha); } catch (IllegalArgumentException expected) { rejected = true; }
             require(rejected);
         }
-        System.out.println("PR_EVENT_BOUNDARY_PASS: seven metadata scenarios, no network access");
+        checkExecutionUrl("https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/");
+        checkExecutionUrl("https://app.harness.io/ng/#/account/7WPs0XUoT4CnMpX3j28V4g/cd/");
+        boolean rejected = false;
+        try { checkExecutionUrl("https://example.invalid/ng/account/7WPs0XUoT4CnMpX3j28V4g/"); }
+        catch (IllegalArgumentException expected) { rejected = true; }
+        require(rejected);
+        System.out.println("PR_EVENT_BOUNDARY_PASS: ten metadata and URL scenarios, no network access");
     }
 
     public static void main(String[] args) {
@@ -121,17 +136,23 @@ class LabPrPipeline {
             Path directory = Path.of(env("LAB_RUN_DIR")).toRealPath();
             require(directory.startsWith(Path.of("/opt/mongodb-lab/work")));
             String endpoint = "/repos/" + REPO + "/pulls/" + number;
+            phase = "verify-current-pr";
             String base = baseCommit(api(endpoint, null), head);
+            phase = "publish-pending";
             status(head, "pending");
             pending = true;
+            phase = "fetch-exact-commits";
             Path git = Files.createDirectory(directory.resolve("git"));
             run(git, directory.resolve("init.log"), List.of("git", "init", "--quiet"));
             run(git, directory.resolve("fetch.log"), List.of("git", "-c", "core.hooksPath=/dev/null", "fetch", "--quiet", "--depth=1", "https://github.com/" + REPO + ".git", base, head));
             for (String name : List.of("base", "candidate")) {
                 run(git, directory.resolve(name + "-checkout.log"), List.of("git", "-c", "core.hooksPath=/dev/null", "worktree", "add", "--quiet", "--detach", directory.resolve(name).toString(), name.equals("base") ? base : head));
             }
+            phase = "inspect-changelog";
             run(directory, directory.resolve("preflight.log"), List.of("java", "-Xmx256m", "-cp", "/opt/mongodb-lab/lib/*:/opt/mongodb-lab/probes", "LabChangelogCheck", directory.resolve("base").toString(), directory.resolve("candidate").toString()));
+            phase = "recheck-pr-identity";
             require(base.equals(baseCommit(api(endpoint, null), head)));
+            phase = "publish-success";
             status(head, "success");
             pending = false;
             System.out.printf("PR_PREFLIGHT_PASS PR=%s HEAD=%s BASE=%s; no Atlas access%n", number, head, base);
@@ -140,7 +161,7 @@ class LabPrPipeline {
                 try { status(head, "failure"); }
                 catch (Exception ignored) { System.err.println("STATUS_UPDATE_FAILED: pending status must not be treated as success"); }
             }
-            System.err.println("PR_PIPELINE_FAILED: check event identity, Git access and proposed changelog (" + failure.getClass().getSimpleName() + ")");
+            System.err.println("PR_PIPELINE_FAILED phase=" + phase + " (" + failure.getClass().getSimpleName() + ")");
             System.exit(1);
         }
     }
