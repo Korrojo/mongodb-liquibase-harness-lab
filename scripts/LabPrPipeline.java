@@ -113,14 +113,13 @@ class LabPrPipeline {
         boolean pending = false;
         try {
             if (args.length == 1 && args[0].equals("--self-test")) { selfTest(); return; }
-            require(args.length == 1);
+            require(args.length == 0);
             head = env("LAB_COMMIT");
             require(head.matches("[0-9a-f]{40}"));
             String number = env("LAB_PR_NUMBER");
             require(number.matches("[1-9][0-9]{0,8}"));
             Path directory = Path.of(env("LAB_RUN_DIR")).toRealPath();
             require(directory.startsWith(Path.of("/opt/mongodb-lab/work")));
-            Path trusted = Path.of(args[0]).toRealPath();
             String endpoint = "/repos/" + REPO + "/pulls/" + number;
             String base = baseCommit(api(endpoint, null), head);
             status(head, "pending");
@@ -131,7 +130,7 @@ class LabPrPipeline {
             for (String name : List.of("base", "candidate")) {
                 run(git, directory.resolve(name + "-checkout.log"), List.of("git", "-c", "core.hooksPath=/dev/null", "worktree", "add", "--quiet", "--detach", directory.resolve(name).toString(), name.equals("base") ? base : head));
             }
-            run(directory, directory.resolve("preflight.log"), List.of("java", "-Xmx256m", "-cp", "/opt/mongodb-lab/lib/*", trusted.resolve("scripts/LabChangelogCheck.java").toString(), directory.resolve("base").toString(), directory.resolve("candidate").toString()));
+            run(directory, directory.resolve("preflight.log"), List.of("java", "-Xmx256m", "-cp", "/opt/mongodb-lab/lib/*:/opt/mongodb-lab/probes", "LabChangelogCheck", directory.resolve("base").toString(), directory.resolve("candidate").toString()));
             require(base.equals(baseCommit(api(endpoint, null), head)));
             status(head, "success");
             pending = false;
