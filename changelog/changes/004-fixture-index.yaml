@@ -1,0 +1,13 @@
+databaseChangeLog:
+  - changeSet:
+      id: lab-004-fixture-index
+      author: Korrojo
+      comment: Add a lookup index for the existing synthetic fixture marker.
+      changes:
+        - createIndex:
+            collectionName: lab_items
+            keys: '{ "labFixture": 1 }'
+            options: '{ "name": "lab_fixture_lookup" }'
+      rollback:
+        - runCommand:
+            command: '{ "dropIndexes": "lab_items", "index": "lab_fixture_lookup" }'
