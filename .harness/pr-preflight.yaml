@@ -1,0 +1,89 @@
+pipeline:
+  name: mongodb-lab-pr-preflight
+  identifier: mongodblabprpreflight
+  projectIdentifier: default_project
+  orgIdentifier: default
+  tags: {}
+  variables:
+    - name: LAB_COMMIT
+      type: String
+      value: <+input>
+    - name: LAB_PR_NUMBER
+      type: String
+      value: <+input>
+  stages:
+    - stage:
+        name: Check proposed migration
+        identifier: Check_proposed_migration
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: Wait
+                  name: Allow delegate startup
+                  identifier: Allow_delegate_startup
+                  spec:
+                    duration: 3m
+              - step:
+                  type: ShellScript
+                  name: Trusted PR preflight
+                  identifier: Trusted_PR_preflight
+                  spec:
+                    shell: Bash
+                    executionTarget: {}
+                    delegateSelectors:
+                      - mongodb-lab
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          set +x
+                          set -Eeuo pipefail
+                          umask 077
+                          test "$(id -u)" = 1001
+                          [[ "$LAB_COMMIT" =~ ^[0-9a-f]{40}$ ]]
+                          [[ "$LAB_PR_NUMBER" =~ ^[1-9][0-9]{0,8}$ ]]
+                          export LAB_RUN_DIR
+                          LAB_RUN_DIR=$(mktemp -d /opt/mongodb-lab/work/pr.XXXXXX)
+                          cleanup() {
+                            local result=$?
+                            trap - EXIT
+                            [[ "$LAB_RUN_DIR" == /opt/mongodb-lab/work/pr.* ]] && rm -rf -- "$LAB_RUN_DIR"
+                            exit "$result"
+                          }
+                          trap cleanup EXIT
+                          trap 'exit 130' INT
+                          trap 'exit 143' TERM
+                          sha256sum --check <<'PR_CHECKSUMS'
+                          b2e9fc61b2517fc19716ccc2c072f4c3af552adaf260cd4f43d301eb2112c093  /opt/mongodb-lab/probes/LabChangelogCheck.class
+                          7a7c8ecc556258cdce5f2fc45f865d43b47c70e2b5fd6eacb4d7b405a1cd47e3  /opt/mongodb-lab/probes/LabPrPipeline.class
+                          PR_CHECKSUMS
+                          timeout --signal=TERM --kill-after=10s 5m java -Xmx256m -cp '/opt/mongodb-lab/lib/*:/opt/mongodb-lab/probes' LabPrPipeline
+                    environmentVariables:
+                      - name: LAB_COMMIT
+                        type: String
+                        value: <+pipeline.variables.LAB_COMMIT>
+                      - name: LAB_PR_NUMBER
+                        type: String
+                        value: <+pipeline.variables.LAB_PR_NUMBER>
+                      - name: LAB_EXECUTION_URL
+                        type: String
+                        value: <+pipeline.executionUrl>
+                      - name: LAB_GITHUB_TOKEN
+                        type: String
+                        value: <+secrets.getValue("harnessoauthaccesstoken_github_1788787327610")>
+                    outputVariables: []
+                  timeout: 7m
+                  failureStrategies:
+                    - onFailure:
+                        errors: [AllErrors]
+                        action:
+                          type: Retry
+                          spec:
+                            retryCount: 2
+                            retryIntervals: [1m]
+                            onRetryFailure:
+                              action:
+                                type: MarkAsFailure
+        tags: {}
