@@ -42,6 +42,9 @@ pipeline:
                           set -Eeuo pipefail
                           umask 077
                           test "$(id -u)" = 1001
+                          exec 8>/opt/mongodb-lab/locks/lifecycle.lock
+                          flock -s -w 10 8
+                          test ! -e /opt/mongodb-lab/locks/draining || { printf 'LAB_DRAINING\n'; exit 75; }
                           [[ "$LAB_COMMIT" =~ ^[0-9a-f]{40}$ ]]
                           [[ "$LAB_PR_NUMBER" =~ ^[1-9][0-9]{0,8}$ ]]
                           export LAB_RUN_DIR

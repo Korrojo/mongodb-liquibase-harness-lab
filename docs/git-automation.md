@@ -102,3 +102,9 @@ Sources: [Harness Git event triggers](https://developer.harness.io/3k-docs/platf
 ### Live trigger installation checkpoint
 
 `mongodblabprevents` was saved disabled, inspected, then enabled. Its [exported configuration](../.harness/pr-trigger.yaml) maps the exact PR head SHA and PR number and excludes fork heads. GitHub webhook `675815654` is active with HTTP 200 last response. Automatic execution acceptance is now being tested; webhook delivery alone is not a passing pipeline.
+
+### Explicit GitHub OIDC branch identity
+
+The initial protected-branch push assumed the AWS role successfully, but a PR event's default subject failed the same trust. Set the repository OIDC subject customization to `use_default: false` with `include_claim_keys: [repo, ref]` through GitHub's API. The existing AWS trust remains unchanged; the token must explicitly name `refs/heads/setup/lab-foundation` with the immutable repository identity. This was applied and read back before successful rerun of [wake execution 34143979367](https://github.com/Korrojo/mongodb-liquibase-harness-lab/actions/runs/34143979367). Neither an AWS trust wildcard nor a general PR subject was added.
+
+Actual automatic PR acceptance: [Harness VMVkxkhlRASpCX_G_yYK_Q](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines/mongodblabprpreflight/executions/VMVkxkhlRASpCX_G_yYK_Q/pipeline) passed before protected merge PR1. Malformed new YAML in test PR2 failed at `inspect-changelog`; corrected head `fa1ece9c70899c69b623e0fd8c6eb46a4d21d8d0` passed [Harness JH75hDezQVONdXUm_ner_w](https://app.harness.io/ng/account/7WPs0XUoT4CnMpX3j28V4g/all/orgs/default/projects/default_project/pipelines/mongodblabprpreflight/executions/JH75hDezQVONdXUm_ner_w/pipeline) after the stopped instance restarted. The authentication fix required rerunning the wake job during that cold-start test.
