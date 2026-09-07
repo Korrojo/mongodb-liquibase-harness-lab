@@ -1,0 +1,59 @@
+name: Wake lab delegate
+
+on:
+  pull_request_target:
+    branches: [setup/lab-foundation]
+    types: [opened, reopened, synchronize]
+  push:
+    branches: [setup/lab-foundation]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: mongodb-lab-delegate-wake
+  cancel-in-progress: false
+
+jobs:
+  wake:
+    if: >-
+      github.repository == 'Korrojo/mongodb-liquibase-harness-lab' &&
+      github.ref == 'refs/heads/setup/lab-foundation' &&
+      (github.event_name != 'pull_request_target' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      id-token: write
+    steps:
+      # No checkout: proposed PR code never runs in this privileged workflow.
+      - name: Obtain temporary start-only AWS credentials
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::224772450208:role/mongodb-lab-github-wake
+          role-duration-seconds: 900
+          allowed-account-ids: '224772450208'
+          role-session-name: lab-wake-${{ github.run_id }}
+          mask-aws-account-id: true
+      - name: Start the existing delegate and observe EC2 readiness
+        shell: bash
+        env:
+          AWS_PAGER: ''
+        run: |
+          set -Eeuo pipefail
+          lab_instance=i-0635332c43aa733a5
+          state=$(aws ec2 describe-instances --instance-ids "$lab_instance" \
+            --query 'Reservations[0].Instances[0].State.Name' --output text)
+          case "$state" in
+            stopping)
+              aws ec2 wait instance-stopped --instance-ids "$lab_instance"
+              aws ec2 start-instances --instance-ids "$lab_instance" >/dev/null
+              ;;
+            stopped) aws ec2 start-instances --instance-ids "$lab_instance" >/dev/null ;;
+            pending|running) : ;;
+            *) printf 'Unexpected instance state: %s\n' "$state" >&2; exit 1 ;;
+          esac
+          aws ec2 wait instance-running --instance-ids "$lab_instance"
+          aws ec2 wait instance-status-ok --instance-ids "$lab_instance"
+          printf 'Existing lab EC2 instance is running with passing status checks.\n'

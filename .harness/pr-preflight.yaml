@@ -20,6 +20,12 @@ pipeline:
           execution:
             steps:
               - step:
+                  type: Wait
+                  name: Allow delegate startup
+                  identifier: Allow_delegate_startup
+                  spec:
+                    duration: 3m
+              - step:
                   type: ShellScript
                   name: Trusted PR preflight
                   identifier: Trusted_PR_preflight
@@ -69,4 +75,15 @@ pipeline:
                         value: <+secrets.getValue("harnessoauthaccesstoken_github_1788787327610")>
                     outputVariables: []
                   timeout: 7m
+                  failureStrategies:
+                    - onFailure:
+                        errors: [AllErrors]
+                        action:
+                          type: Retry
+                          spec:
+                            retryCount: 2
+                            retryIntervals: [1m]
+                            onRetryFailure:
+                              action:
+                                type: MarkAsFailure
         tags: {}
